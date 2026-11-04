@@ -1,5 +1,5 @@
 /**
- * Service Worker da Calculadora (PWA) — mesma estratégia do 8.1. ELEICOES
+ * Service Worker da Calculadora (PWA)
  * - Pré-carrega o "app shell" para abrir offline.
  * - Páginas (navegação): rede primeiro; sem rede, abre o index.html do cache.
  * - Demais arquivos do próprio site: responde do cache e atualiza em segundo plano (stale-while-revalidate).
@@ -8,7 +8,7 @@
  * CACHE_VERSION e APP_SHELL são gerados por scripts/versionar.mjs: não edite à mão.
  */
 // <versionar>
-const CACHE_VERSION = 'calculadora-20261028-1842';
+const CACHE_VERSION = 'calculadora-20261104-1631';
 const APP_SHELL = [
   "./",
   "index.html",
@@ -16,30 +16,30 @@ const APP_SHELL = [
   "icons/app-icon-32.png",
   "icons/app-icon-192.png",
   "icons/apple-touch-icon.png",
-  "css/fonts.css?v=20261028-1842",
-  "vendor/stk-gov/stk-gov.css?v=20261028-1842",
-  "css/style.css?v=20261028-1842",
-  "css/analista.css?v=20261028-1842",
+  "css/fonts.css?v=20261104-1631",
+  "vendor/stk-gov/stk-gov.css?v=20261104-1631",
+  "css/style.css?v=20261104-1631",
+  "css/analista.css?v=20261104-1631",
   "vendor/chart.js/chart.umd.js",
   "icons/app-icon-64.png",
-  "src/Program.js?v=20261028-1842",
-  "src/application/MacroObservatoryService.js?v=20261028-1842",
-  "src/domain/DebtTrajectoryModel.js?v=20261028-1842",
-  "src/domain/FisherModel.js?v=20261028-1842",
-  "src/domain/MacroState.js?v=20261028-1842",
-  "src/domain/PublicFinanceModel.js?v=20261028-1842",
-  "src/domain/SensibilityMatrixModel.js?v=20261028-1842",
-  "src/domain/UnionBudgetModel.js?v=20261028-1842",
-  "src/domain/UnionSpendingModel.js?v=20261028-1842",
-  "src/domain/referencia/DespesasUniaoReferencia.js?v=20261028-1842",
-  "src/domain/referencia/OrcamentoUniaoReferencia.js?v=20261028-1842",
-  "src/infrastructure/ChartAdapter.js?v=20261028-1842",
-  "src/infrastructure/CsvExporter.js?v=20261028-1842",
-  "src/infrastructure/GovApiGateway.js?v=20261028-1842",
-  "src/infrastructure/LocalSnapshotStore.js?v=20261028-1842",
-  "src/ui/CenarioUrl.js?v=20261028-1842",
-  "src/ui/ObservatoryView.js?v=20261028-1842",
-  "src/ui/SvgIcons.js?v=20261028-1842",
+  "src/Program.js?v=20261104-1631",
+  "src/application/MacroObservatoryService.js?v=20261104-1631",
+  "src/domain/DebtTrajectoryModel.js?v=20261104-1631",
+  "src/domain/FisherModel.js?v=20261104-1631",
+  "src/domain/MacroState.js?v=20261104-1631",
+  "src/domain/PublicFinanceModel.js?v=20261104-1631",
+  "src/domain/SensibilityMatrixModel.js?v=20261104-1631",
+  "src/domain/UnionBudgetModel.js?v=20261104-1631",
+  "src/domain/UnionSpendingModel.js?v=20261104-1631",
+  "src/domain/referencia/DespesasUniaoReferencia.js?v=20261104-1631",
+  "src/domain/referencia/OrcamentoUniaoReferencia.js?v=20261104-1631",
+  "src/infrastructure/ChartAdapter.js?v=20261104-1631",
+  "src/infrastructure/CsvExporter.js?v=20261104-1631",
+  "src/infrastructure/GovApiGateway.js?v=20261104-1631",
+  "src/infrastructure/LocalSnapshotStore.js?v=20261104-1631",
+  "src/ui/CenarioUrl.js?v=20261104-1631",
+  "src/ui/ObservatoryView.js?v=20261104-1631",
+  "src/ui/SvgIcons.js?v=20261104-1631",
   "vendor/fonts/ibm-plex-mono-latin-400-normal.woff2",
   "vendor/fonts/ibm-plex-mono-latin-500-normal.woff2",
   "vendor/fonts/ibm-plex-mono-latin-600-normal.woff2",
@@ -49,8 +49,8 @@ const APP_SHELL = [
   "vendor/fonts/inter-latin-700-normal.woff2",
   "vendor/fonts/space-grotesk-latin-ext.woff2",
   "vendor/fonts/space-grotesk-latin.woff2",
-  "vendor/stk-gov/stk-gov-shell.js?v=20261028-1842",
-  "vendor/stk-gov/stk-gov-pwa.js?v=20261028-1842",
+  "vendor/stk-gov/stk-gov-shell.js?v=20261104-1631",
+  "vendor/stk-gov/stk-gov-pwa.js?v=20261104-1631",
   "icons/app-icon-512.png"
 ];
 // </versionar>

@@ -141,10 +141,26 @@ try {
 
   console.log('\n4. Link de cenário');
   await tela(1400);
+  const lerCenario = async () => JSON.parse(await avaliar('JSON.stringify({aba: document.querySelector(".tab-pane.active").id, selic: fInputSelic.value, base: document.querySelector("[data-base].highlight").dataset.base})'));
+  const cenarioAplicado = (c, selic) => c.aba === 'tabFiscal' && c.selic === selic && c.base === 'eleitores';
+
+  // Página já aberta, com a busca inicial ainda em andamento: só o # muda
+  await cdp('Page.navigate', { url: 'about:blank' }); await esperar(300);
+  await cdp('Page.navigate', { url: base }); await esperar(800);
+  await cdp('Page.navigate', { url: `${base}#selic=12&base=eleitores&aba=tabFiscal` });
+  await esperar(9000); // a busca termina e o cenário é reaplicado
+  assert(cenarioAplicado(await lerCenario(), '12'), 'Link colado durante a busca inicial é aplicado e sobrevive aos dados novos');
+
+  // Link aberto do zero
+  await cdp('Page.navigate', { url: 'about:blank' }); await esperar(300);
   await abrir(`${base}#selic=11&base=eleitores&aba=tabFiscal`);
   await esperar(6000); // a busca automática termina e o cenário é reaplicado
-  const cen = JSON.parse(await avaliar('JSON.stringify({aba: document.querySelector(".tab-pane.active").id, selic: fInputSelic.value, base: document.querySelector("[data-base].highlight").dataset.base})'));
-  assert(cen.aba === 'tabFiscal' && cen.selic === '11' && cen.base === 'eleitores', 'Link abre o simulador com Selic 11% e base por eleitor');
+  assert(cenarioAplicado(await lerCenario(), '11'), 'Link abre o simulador com Selic 11% e base por eleitor');
+
+  // Valor fora da faixa é ignorado
+  await cdp('Page.navigate', { url: 'about:blank' }); await esperar(300);
+  await abrir(`${base}#selic=99&aba=tabFiscal`);
+  assert((await lerCenario()).selic !== '99', 'Link com Selic fora da faixa é ignorado');
 
   console.log('\n5. PWA');
   assert(await avaliar('navigator.serviceWorker.getRegistration().then(r => !!(r && (r.active || r.installing || r.waiting)))'), 'Service worker registrado');

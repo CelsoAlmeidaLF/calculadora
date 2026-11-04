@@ -3,7 +3,6 @@
    Fonte canônica: 8. STK-GOVERNO-BRAZIL/_design-system/stk-gov.css
    Cada projeto 8.X recebe uma cópia em vendor/stk-gov/ pelo script sync.mjs:
    NÃO edite a cópia; edite aqui e rode `node _design-system/sync.mjs`.
-   Extraído do 8.1. ELEICOES (Painel 2026), que é a referência visual.
    ========================================================================== */
 
 /* ───────── 1. TOKENS ───────── */
@@ -53,7 +52,7 @@
   --text-tertiary: #8A8A8A;
   --text-disabled: #5C5C5C;
 
-  /* Apelidos usados pelas calculadoras 8.2/8.3 */
+  /* Apelidos usados pelo conteúdo dos apps */
   --text: var(--text-primary);
   --text-muted: var(--text-secondary);
   --text-subtle: var(--text-tertiary);

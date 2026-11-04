@@ -1,4 +1,4 @@
-# Observatório Macroeconômico do Brasil (8.2. CALCULADORA)
+# Observatório Macroeconômico do Brasil (8.3. CALCULADORA)
 
 Selic, inflação, impostos, juros, dívida e gastos públicos do Brasil, por habitante (IBGE) ou por eleitor (TSE 2026), com simulador da trajetória da dívida. Roda no navegador, sem servidor próprio e sem telemetria; instala como app (PWA) e abre sem internet.
 
@@ -10,7 +10,7 @@ Desenvolvido por Celso de Almeida Leite (Systekna), outubro de 2026.
 |---|---|---|
 | Selic meta, IPCA 12 meses, dívida bruta (% do PIB e R$), PIB 12 meses | Banco Central, SGS: séries 432, 13522, 13762, 13761, 4382 | Ao vivo ao abrir a página (com histórico de 12 meses) |
 | População residente | IBGE, SIDRA tabela 6579 | Ao vivo |
-| Eleitorado apto 2026 (158.745.502, 1º turno, com exterior) | TSE, somado dos dados de `8.1. ELEICOES` | Valor fixo (o TSE não tem API) |
+| Eleitorado apto 2026 (158.745.502, 1º turno, com exterior) | TSE, Estatísticas do eleitorado | Valor fixo (o TSE não tem API) |
 | Gastos da União por função, 12 meses | Tesouro Nacional, SICONFI, RREO Anexo 02 (despesa liquidada) | Referência gerada por script |
 | Receita federal (impostos e contribuições) e juros pagos, 12 meses | Tesouro Nacional, SICONFI, RREO Anexo 01 | Referência gerada por script |
 | Carga tributária do país (34,2% do PIB), custo de ~R$ 50 Bi por ponto de Selic | Tesouro Nacional | Parâmetros do simulador |
@@ -29,7 +29,7 @@ A última consulta bem-sucedida fica salva no navegador (`localStorage`); ao rea
 
 ## Identidade visual
 
-Usa o design system comum dos projetos 8.X, extraído do `8.1. ELEICOES`: `vendor/stk-gov/` é cópia de `../_design-system/` (não edite a cópia; ver `../_design-system/README.md`). O CSS do conteúdo da calculadora fica em `css/style.css` e `css/analista.css`.
+Usa o design system comum: `vendor/stk-gov/` é cópia de `../_design-system/` (não edite a cópia; ver `../_design-system/README.md`). O CSS do conteúdo da calculadora fica em `css/style.css` e `css/analista.css`.
 
 ## Estrutura
 

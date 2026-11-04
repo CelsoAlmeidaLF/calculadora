@@ -1,7 +1,7 @@
 {
   "name": "stk-governo-calculadora",
   "private": true,
-  "description": "Observatório Macroeconômico do Brasil (8.2. CALCULADORA): sem dependências npm",
+  "description": "Observatório Macroeconômico do Brasil (8.3. CALCULADORA): sem dependências npm",
   "type": "module",
   "scripts": {
     "test": "node tests/test_domain_models.js",

@@ -1,6 +1,6 @@
 /**
  * STK-GOVERNO-BRAZIL — PWA comum: registro do Service Worker e convite de instalação do navegador.
- * Fonte canônica: 8. STK-GOVERNO-BRAZIL/_design-system/stk-gov-pwa.js (mesma lógica do PwaAdapter do 8.1).
+ * Fonte canônica: 8. STK-GOVERNO-BRAZIL/_design-system/stk-gov-pwa.js.
  * Cada projeto recebe uma cópia em vendor/stk-gov/ (node _design-system/sync.mjs): não edite a cópia.
  * A UI só recebe "pode instalar?" e "instalar()".
  */

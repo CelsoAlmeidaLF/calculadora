@@ -1,12 +1,12 @@
-import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261028-1842';
-import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261028-1842';
-import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261028-1842';
-import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261028-1842';
-import { ObservatoryView } from './ui/ObservatoryView.js?v=20261028-1842';
-import { CenarioUrl } from './ui/CenarioUrl.js?v=20261028-1842';
-import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261028-1842';
-import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261028-1842';
-import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261028-1842';
+import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261104-1631';
+import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261104-1631';
+import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261104-1631';
+import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261104-1631';
+import { ObservatoryView } from './ui/ObservatoryView.js?v=20261104-1631';
+import { CenarioUrl } from './ui/CenarioUrl.js?v=20261104-1631';
+import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261104-1631';
+import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261104-1631';
+import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261104-1631';
 
 /**
  * Composition Root da Aplicação
@@ -67,16 +67,17 @@ export class Program {
     const aba = viewInstance.aplicarCenario(cenario);
     if (aba) shell.trocarAba(aba);
 
-    // 8. Busca os números mais recentes ao abrir (sem rede, seguem os salvos ou os de referência).
-    //    Os dados novos não apagam o cenário do link.
-    await viewInstance.handleSyncClick({ silencioso: true });
-    if (cenario) viewInstance.aplicarCenario(cenario);
-
-    // Link de cenário colado com a página já aberta (só o # muda, a página não recarrega)
+    // 8. Link de cenário colado com a página já aberta (só o # muda, a página não recarrega).
+    //    Fica antes da busca abaixo, que pode levar vários segundos.
     window.addEventListener('hashchange', () => {
       const abaPedida = viewInstance.aplicarCenario(CenarioUrl.ler(location.href));
       if (abaPedida) shell.trocarAba(abaPedida);
     });
+
+    // 9. Busca os números mais recentes ao abrir (sem rede, seguem os salvos ou os de referência).
+    //    Os dados novos não apagam o cenário do link; relê o endereço porque ele pode ter mudado durante a busca.
+    await viewInstance.handleSyncClick({ silencioso: true });
+    viewInstance.aplicarCenario(CenarioUrl.ler(location.href));
 
     console.log('[Observatório Macroeconômico] Sistema pronto.');
   }

@@ -61,6 +61,7 @@ const pendentes = {};
 const erros = [];
 ws.addEventListener('message', m => {
   const d = JSON.parse(m.data);
+  if (d.method === 'Log.entryAdded' && /Content Security Policy/i.test(d.params.entry.text)) erros.push(d.params.entry.text);
   if (d.method === 'Runtime.exceptionThrown') erros.push(d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text);
   if (pendentes[d.id]) { pendentes[d.id](d); delete pendentes[d.id]; }
 });
@@ -83,6 +84,7 @@ const estado = async () => JSON.parse(await avaliar(`JSON.stringify({
 
 try {
   await cdp('Runtime.enable');
+  await cdp('Log.enable');
 
   console.log('\n1. Desktop (1400 px)');
   await tela(1400);
@@ -165,6 +167,8 @@ try {
   console.log('\n5. PWA');
   assert(await avaliar('navigator.serviceWorker.getRegistration().then(r => !!(r && (r.active || r.installing || r.waiting)))'), 'Service worker registrado');
 
+  await avaliar('document.querySelector(".skip-link").click()');
+  assert(await avaliar('document.activeElement === document.querySelector("main") && !location.hash.includes("conteudo")'), 'Atalho leva o foco ao conteúdo sem mudar o endereço');
   assert(erros.length === 0, `Nenhum erro de JavaScript${erros.length ? `: ${erros.join(' | ')}` : ''}`);
 } finally {
   ws.close();

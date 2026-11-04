@@ -38,6 +38,7 @@ export class StkGovShell {
   }
 
   iniciar() {
+    this._criarAtalhoConteudo();
     // Folhas da barra inferior (celular): montadas antes das abas, porque podem copiar itens de aba
     this._montarFolhas();
     // Recolhida no desktop: lembra a escolha de cada pessoa
@@ -90,6 +91,19 @@ export class StkGovShell {
   }
 
   /** Botão de menu: gaveta no tablet e no celular, recolher/expandir no desktop */
+  /** "Pular para o conteúdo": primeiro item do Tab. Foca o <main> sem mexer no # do endereço, que guarda aba e cenário */
+  _criarAtalhoConteudo() {
+    const principal = this.doc.querySelector('main');
+    if (!principal) return;
+    principal.tabIndex = -1;
+    const atalho = this.doc.createElement('a');
+    atalho.className = 'skip-link';
+    atalho.href = '#';
+    atalho.textContent = 'Pular para o conteúdo';
+    atalho.addEventListener('click', e => { e.preventDefault(); principal.focus(); });
+    this.doc.body.prepend(atalho);
+  }
+
   alternar() {
     if (!this.sidebar) return;
     if (this.gaveta.matches) {

@@ -1,12 +1,12 @@
-import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261104-1631';
-import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261104-1631';
-import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261104-1631';
-import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261104-1631';
-import { ObservatoryView } from './ui/ObservatoryView.js?v=20261104-1631';
-import { CenarioUrl } from './ui/CenarioUrl.js?v=20261104-1631';
-import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261104-1631';
-import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261104-1631';
-import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261104-1631';
+import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261104-1639';
+import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261104-1639';
+import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261104-1639';
+import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261104-1639';
+import { ObservatoryView } from './ui/ObservatoryView.js?v=20261104-1639';
+import { CenarioUrl } from './ui/CenarioUrl.js?v=20261104-1639';
+import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261104-1639';
+import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261104-1639';
+import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261104-1639';
 
 /**
  * Composition Root da Aplicação

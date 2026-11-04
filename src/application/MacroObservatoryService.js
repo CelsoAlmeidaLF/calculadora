@@ -1,10 +1,10 @@
-import { MacroState } from '../domain/MacroState.js?v=20261104-1631';
-import { FisherModel } from '../domain/FisherModel.js?v=20261104-1631';
-import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261104-1631';
-import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261104-1631';
-import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261104-1631';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261104-1631';
-import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261104-1631';
+import { MacroState } from '../domain/MacroState.js?v=20261104-1639';
+import { FisherModel } from '../domain/FisherModel.js?v=20261104-1639';
+import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261104-1639';
+import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261104-1639';
+import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261104-1639';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261104-1639';
+import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261104-1639';
 
 /**
  * Camada de Aplicação: MacroObservatoryService
@@ -13,9 +13,9 @@ import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261104-1631';
 export class MacroObservatoryService {
   /**
    * @param {Object} dependencies
-   * @param {import('../infrastructure/GovApiGateway.js?v=20261104-1631').GovApiGateway} dependencies.apiGateway
+   * @param {import('../infrastructure/GovApiGateway.js?v=20261104-1639').GovApiGateway} dependencies.apiGateway
    * @param {MacroState} [dependencies.initialState]
-   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261104-1631').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
+   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261104-1639').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
    */
   constructor({ apiGateway, initialState = null, cache = null } = {}) {
     this.apiGateway = apiGateway;

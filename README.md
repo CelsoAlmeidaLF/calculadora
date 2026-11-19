@@ -19,6 +19,10 @@ A API do Tesouro não manda cabeçalho CORS, então o navegador não consegue co
 
 A última consulta bem-sucedida fica salva no navegador (`localStorage`); ao reabrir, a página mostra esses números enquanto busca os novos.
 
+## Configurações
+
+A engrenagem do topo abre o painel comum: tema (escuro, claro ou do sistema), base padrão dos cálculos, o que está guardado neste navegador, com opção de apagar, e a busca por versão nova. A base padrão não se aplica a links de cenário: quem recebe um link vê os números de quem enviou.
+
 ## O que a página compara
 
 - **Impostos e gastos são só da União**, dos dois lados: impostos e contribuições federais × despesa liquidada da União. Estados e municípios ficam de fora; a parte dos impostos federais repassada a eles aparece em "Transferências a estados e municípios".

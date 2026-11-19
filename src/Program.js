@@ -1,12 +1,15 @@
-import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261104-1745';
-import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261104-1745';
-import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261104-1745';
-import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261104-1745';
-import { ObservatoryView } from './ui/ObservatoryView.js?v=20261104-1745';
-import { CenarioUrl } from './ui/CenarioUrl.js?v=20261104-1745';
-import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261104-1745';
-import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261104-1745';
-import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261104-1745';
+import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261119-1122';
+import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261119-1122';
+import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261119-1122';
+import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261119-1122';
+import { PreferenciasStore } from './infrastructure/PreferenciasStore.js?v=20261119-1122';
+import { ObservatoryView } from './ui/ObservatoryView.js?v=20261119-1122';
+import { CenarioUrl } from './ui/CenarioUrl.js?v=20261119-1122';
+import { secaoCalculos } from './ui/PreferenciasPainel.js?v=20261119-1122';
+import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261119-1122';
+import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261119-1122';
+import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261119-1122';
+import { StkGovConfig } from '../vendor/stk-gov/stk-gov-config.js?v=20261119-1122';
 
 /**
  * Composition Root da Aplicação
@@ -50,22 +53,42 @@ export class Program {
     pwa.init();
     pwa.ligarBotao(document.getElementById('btnInstallApp'));
 
-    // 5. Inicializar Gráficos Chart.js
-    const canvasDebt = document.getElementById('chartDebtTraj');
-    const canvasBudget = document.getElementById('chartBudgetPie');
-    const canvasPerCapita = document.getElementById('chartPerCapita');
+    // 5. Inicializar Gráficos Chart.js (de novo a cada troca de tema: as cores ficam dentro do canvas)
+    const iniciarGraficos = () => {
+      const canvasDebt = document.getElementById('chartDebtTraj');
+      const canvasBudget = document.getElementById('chartBudgetPie');
+      const canvasPerCapita = document.getElementById('chartPerCapita');
 
-    if (canvasDebt) chartAdapter.initDebtChart(canvasDebt);
-    if (canvasBudget) chartAdapter.initBudgetChart(canvasBudget);
-    if (canvasPerCapita) chartAdapter.initPerCapitaChart(canvasPerCapita);
+      if (canvasDebt) chartAdapter.initDebtChart(canvasDebt);
+      if (canvasBudget) chartAdapter.initBudgetChart(canvasBudget);
+      if (canvasPerCapita) chartAdapter.initPerCapitaChart(canvasPerCapita);
+    };
+    iniciarGraficos();
+    document.addEventListener('stk:tema', () => {
+      iniciarGraficos();
+      viewInstance.render();
+    });
 
     // 6. Primeira Renderização: com a última consulta salva no aparelho, se houver
     if (!service.restaurarSalvo()) viewInstance.render();
 
-    // 7. Cenário recebido por link (#selic=...&aba=...)
+    // 7. Cenário recebido por link (#selic=...&aba=...). O link manda: a base padrão da pessoa
+    //    só vale sem cenário, senão quem recebe o link veria números diferentes de quem enviou.
+    const preferencias = new PreferenciasStore();
     const cenario = CenarioUrl.ler(location.href);
+    const basePadrao = preferencias.lerBase();
+    if (!cenario && basePadrao) service.setBaseCalculo(basePadrao);
     const aba = viewInstance.aplicarCenario(cenario);
     if (aba) shell.trocarAba(aba);
+
+    new StkGovConfig({
+      app: 'calculadora',
+      nome: 'Observatório Macroeconômico do Brasil',
+      pwa,
+      rotulosDados: { 'dados.v1': 'Última consulta às fontes oficiais', base: 'Base padrão dos cálculos' },
+      dataDosDados: () => service.state.lastSync || 'valores de referência',
+      secoes: [secaoCalculos({ preferencias, service })]
+    }).iniciar();
 
     // 8. Link de cenário colado com a página já aberta (só o # muda, a página não recarrega).
     //    Fica antes da busca abaixo, que pode levar vários segundos.

@@ -1,3 +1,5 @@
+import { coresDoTema } from '../../vendor/stk-gov/stk-gov-config.js?v=20261119-1122';
+
 /**
  * Camada de Infraestrutura: ChartAdapter
  * Adaptador para Chart.js 4.4.1 integrado com os tokens visuais do Design System Systekna.
@@ -12,6 +14,7 @@ const rotuloDasBarras = {
     const { ctx, chartArea } = chart;
     const meta = chart.getDatasetMeta(0);
     const valores = chart.data.datasets[0].data;
+    const t = coresDoTema();
     ctx.save();
     ctx.font = '600 11px "IBM Plex Mono", monospace';
     ctx.textBaseline = 'middle';
@@ -20,7 +23,7 @@ const rotuloDasBarras = {
       const largura = ctx.measureText(texto).width;
       const cabeFora = barra.x + 6 + largura <= chartArea.right;
       ctx.textAlign = cabeFora ? 'left' : 'right';
-      ctx.fillStyle = cabeFora ? '#D6D6D6' : '#0E1210';
+      ctx.fillStyle = cabeFora ? t.texto : t.sobreBarra;
       ctx.fillText(texto, cabeFora ? barra.x + 6 : barra.x - 6, barra.y);
     });
     ctx.restore();
@@ -40,6 +43,7 @@ export class ChartAdapter {
    */
   initDebtChart(canvasEl, initialData = [79.0, 79.5, 80.1, 80.6, 81.1]) {
     if (!canvasEl || typeof Chart === 'undefined') return;
+    const t = coresDoTema();
     if (this.debtChart) this.debtChart.destroy();
 
     const ctx = canvasEl.getContext('2d');
@@ -50,12 +54,12 @@ export class ChartAdapter {
         datasets: [{
           label: 'Dívida Bruta (% do PIB)',
           data: initialData,
-          borderColor: '#FFD43B',
-          backgroundColor: 'rgba(255, 212, 59, 0.12)',
+          borderColor: t.amarelo,
+          backgroundColor: t.alfa(t.amarelo, 0.12),
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: '#FFD43B',
-          pointBorderColor: '#1F1F1F',
+          pointBackgroundColor: t.amarelo,
+          pointBorderColor: t.superficie,
           pointBorderWidth: 2,
           pointRadius: 4.5,
           pointHoverRadius: 6.5
@@ -67,7 +71,7 @@ export class ChartAdapter {
         plugins: {
           legend: {
             labels: {
-              color: '#D6D6D6',
+              color: t.texto,
               font: { family: 'Inter', size: 11, weight: '500' }
             }
           },
@@ -88,16 +92,16 @@ export class ChartAdapter {
         },
         scales: {
           x: {
-            ticks: { color: '#ADADAD', font: { family: 'Inter', size: 10 } },
+            ticks: { color: t.eixo, font: { family: 'Inter', size: 10 } },
             grid: { display: false }
           },
           y: {
             ticks: {
-              color: '#ADADAD',
+              color: t.eixo,
               font: { family: 'Inter', size: 10 },
               callback: v => `${v}%`
             },
-            grid: { color: '#333333' }
+            grid: { color: t.grade }
           }
         }
       }
@@ -120,6 +124,7 @@ export class ChartAdapter {
    */
   initBudgetChart(canvasEl) {
     if (!canvasEl || typeof Chart === 'undefined') return;
+    const t = coresDoTema();
     if (this.budgetChart) this.budgetChart.destroy();
 
     const ctx = canvasEl.getContext('2d');
@@ -130,15 +135,15 @@ export class ChartAdapter {
         datasets: [{
           data: [],
           backgroundColor: [
-            '#6C9CFF', // previdência
-            '#F1707B', // juros
-            '#E0A0A6', // amortização
-            '#B794F6', // transferências
-            '#3DD68C', // pessoal
-            '#FFD43B', // investimentos
-            '#8A8A8A'  // demais
+            t.azul, // previdência
+            t.vermelho, // juros
+            t.rosa, // amortização
+            t.roxo, // transferências
+            t.verde, // pessoal
+            t.amarelo, // investimentos
+            t.cinza  // demais
           ],
-          borderColor: '#1F1F1F',
+          borderColor: t.superficie,
           borderWidth: 3,
           hoverOffset: 6
         }]
@@ -158,7 +163,7 @@ export class ChartAdapter {
           legend: {
             position: typeof window !== 'undefined' && window.innerWidth < 640 ? 'bottom' : 'right',
             labels: {
-              color: '#D6D6D6',
+              color: t.texto,
               font: { family: 'Inter', size: 10 },
               boxWidth: 12,
               padding: 10
@@ -202,6 +207,7 @@ export class ChartAdapter {
    */
   initPerCapitaChart(canvasEl) {
     if (!canvasEl || typeof Chart === 'undefined') return;
+    const t = coresDoTema();
     if (this.perCapitaChart) this.perCapitaChart.destroy();
 
     this.perCapitaDescricao = 'por habitante / ano';
@@ -213,8 +219,8 @@ export class ChartAdapter {
         datasets: [{
           label: 'R$ por pessoa por ano',
           data: [],
-          backgroundColor: '#3DD68C',
-          hoverBackgroundColor: '#6BE3A8',
+          backgroundColor: t.verde,
+          hoverBackgroundColor: t.verdeHover,
           borderRadius: 4,
           borderSkipped: 'start',
           barPercentage: 0.7,
@@ -245,11 +251,11 @@ export class ChartAdapter {
             beginAtZero: true,
             // O valor já vem escrito em cada barra: o eixo fica só com a grade
             ticks: { display: false },
-            grid: { color: '#333333' }
+            grid: { color: t.grade }
           },
           y: {
             ticks: {
-              color: '#D6D6D6',
+              color: t.texto,
               font: { family: 'Inter', size: 11 },
               // Em tela estreita, nomes longos encurtam; o tooltip mostra o nome inteiro
               callback(valor) {

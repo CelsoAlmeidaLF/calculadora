@@ -120,6 +120,7 @@ try {
   assert((await estado()).aba === 'tabFiscal', 'Item da barra lateral troca para o simulador');
   await avaliar('document.querySelector(".action-menu [aria-haspopup]").click()'); await esperar(200);
   assert(await avaliar('document.querySelector(".action-menu").classList.contains("open")'), 'Botão Compartilhar abre o menu');
+  assert(await avaliar('document.querySelectorAll(".action-menu-item").length === 2 && !/wha(ts)app|wa\\.me/i.test(document.documentElement.outerHTML)'), 'Menu Compartilhar só tem Copiar resumo e Copiar link');
 
   console.log('\n2. Tablet (900 px): gaveta');
   await tela(900);
@@ -164,7 +165,62 @@ try {
   await abrir(`${base}#selic=99&aba=tabFiscal`);
   assert((await lerCenario()).selic !== '99', 'Link com Selic fora da faixa é ignorado');
 
-  console.log('\n5. PWA');
+  console.log('\n5. Configurações');
+  const reabrir = async (url = base) => { await cdp('Page.navigate', { url: 'about:blank' }); await esperar(300); await abrir(url); };
+  const configAberta = () => avaliar('stkConfig.open');
+  const escolher = async (nome, valor) => { await avaliar(`document.querySelector('input[name=${nome}][value=${valor}]').click()`); await esperar(500); };
+  await tela(1400);
+  await reabrir();
+  await avaliar('localStorage.clear()');
+  await reabrir();
+  assert(await avaliar('document.documentElement.dataset.theme') === 'dark', 'Tema escuro é o padrão');
+  await avaliar('btnConfig.click()'); await esperar(200);
+  assert(await configAberta(), 'Engrenagem do topo abre o painel');
+  await escolher('stkTema', 'claro');
+  assert(await avaliar(`document.documentElement.dataset.theme === 'light' && localStorage.getItem('calculadora.tema') === 'claro' && document.querySelector('meta[name=theme-color]').content === '#F7FAF8'`), 'Tema claro aplica e fica salvo');
+  assert(await avaliar(`Chart.getChart(chartDebtTraj).data.datasets[0].borderColor === '#A67F00' && Chart.getChart(chartPerCapita).data.labels.length > 5`), 'Gráficos trocam de cor e mantêm os dados');
+  await avaliar('document.querySelector(".stk-config-fechar").click()'); await esperar(100);
+  assert(!(await configAberta()), 'Botão fechar fecha o painel');
+  await reabrir();
+  assert(await avaliar('document.documentElement.dataset.theme') === 'light', 'Tema claro continua depois de recarregar');
+  await avaliar(`localStorage.setItem('calculadora.tema', 'roxo')`);
+  await reabrir();
+  assert(await avaliar('document.documentElement.dataset.theme') === 'dark', 'Valor salvo inválido volta ao escuro');
+  await tela(320, true);
+  await reabrir();
+  await avaliar('btnConfig.click()'); await esperar(200);
+  assert(await avaliar('btnConfig.getBoundingClientRect().right <= innerWidth && stkConfig.offsetWidth <= innerWidth && stkConfig.scrollWidth <= stkConfig.clientWidth'), 'Em 320 px o painel e a engrenagem cabem na tela');
+  await avaliar('stkConfig.close()');
+  await tela(1400);
+
+  const baseAtiva = () => avaliar('document.querySelector("[data-base][aria-pressed=true]").dataset.base');
+  await avaliar(`localStorage.removeItem('calculadora.tema')`);
+  await reabrir();
+  await avaliar('btnConfig.click()'); await esperar(200);
+  await escolher('stkBase', 'eleitores');
+  assert(await baseAtiva() === 'eleitores', 'Base padrão vale na hora');
+  await avaliar('stkConfig.close()');
+  await reabrir();
+  assert(await baseAtiva() === 'eleitores', 'Base padrão vale ao reabrir');
+  await reabrir(`${base}#selic=12&base=populacao`);
+  assert(await baseAtiva() === 'populacao', 'Link com a base de quem enviou vence a preferência');
+  await reabrir(`${base}#selic=12`);
+  assert(await baseAtiva() === 'populacao', 'Link sem base não usa a preferência');
+  await avaliar(`localStorage.setItem('calculadora.base', 'municipios')`);
+  await reabrir();
+  assert(await baseAtiva() === 'populacao', 'Base salva inválida é ignorada');
+
+  await avaliar(`localStorage.setItem('outro-app.tema', 'claro'); localStorage.setItem('calculadora.tema', 'claro')`);
+  await reabrir();
+  await avaliar('btnConfig.click()'); await esperar(200);
+  const botaoApagar = 'document.querySelector(".stk-config-botao.perigo")';
+  await avaliar(`${botaoApagar}.click()`); await esperar(100);
+  assert(await avaliar(`localStorage.getItem('calculadora.tema') === 'claro' && ${botaoApagar}.textContent.includes('Confirmar')`), 'Primeiro clique em Apagar só pede confirmação');
+  await avaliar(`${botaoApagar}.click()`); await esperar(2500);
+  assert(await avaliar(`document.documentElement.dataset.theme === 'dark' && !Object.keys(localStorage).some(k => k.startsWith('calculadora.') && k !== 'calculadora.dados.v1') && localStorage.getItem('outro-app.tema') === 'claro'`), 'Apagar limpa só os dados deste app e volta ao padrão');
+  await avaliar(`localStorage.removeItem('outro-app.tema')`);
+
+  console.log('\n6. PWA');
   assert(await avaliar('navigator.serviceWorker.getRegistration().then(r => !!(r && (r.active || r.installing || r.waiting)))'), 'Service worker registrado');
 
   await avaliar('document.querySelector(".skip-link").click()');

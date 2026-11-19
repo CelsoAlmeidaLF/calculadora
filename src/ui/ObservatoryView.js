@@ -1,5 +1,5 @@
-import { renderIcons } from './SvgIcons.js?v=20261104-1745';
-import { CenarioUrl } from './CenarioUrl.js?v=20261104-1745';
+import { renderIcons } from './SvgIcons.js?v=20261119-1122';
+import { CenarioUrl } from './CenarioUrl.js?v=20261119-1122';
 
 /** Número no padrão brasileiro com casas fixas: fmt(13.4, 2) → "13,40" */
 const fmt = (v, casas) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -13,8 +13,8 @@ const brl = v => `${v < 0 ? '-' : ''}R$ ${Math.abs(Math.round(v)).toLocaleString
 export class ObservatoryView {
   /**
    * @param {Object} params
-   * @param {import('../application/MacroObservatoryService.js?v=20261104-1745').MacroObservatoryService} params.service
-   * @param {import('../infrastructure/ChartAdapter.js?v=20261104-1745').ChartAdapter} params.chartAdapter
+   * @param {import('../application/MacroObservatoryService.js?v=20261119-1122').MacroObservatoryService} params.service
+   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1122').ChartAdapter} params.chartAdapter
    */
   constructor({ service, chartAdapter }) {
     this.service = service;
@@ -132,9 +132,6 @@ export class ObservatoryView {
     // Ações de Relatório e Exportação
     document.querySelectorAll('[data-action="export-csv"]').forEach(btn => {
       btn.addEventListener('click', () => this.handleExportCsv());
-    });
-    document.querySelectorAll('[data-action="share-whatsapp"]').forEach(btn => {
-      btn.addEventListener('click', () => this.handleShareWhatsapp());
     });
     document.querySelectorAll('[data-action="copy-report"]').forEach(btn => {
       btn.addEventListener('click', () => this.handleCopyReport());
@@ -276,10 +273,6 @@ export class ObservatoryView {
     return this.service.generateConsolidatedReport({
       fiscalData: this.cachedFiscalResult
     });
-  }
-
-  handleShareWhatsapp() {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(this.getReportText())}`, '_blank');
   }
 
   async handleCopyReport() {

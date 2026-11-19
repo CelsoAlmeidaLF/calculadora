@@ -8,6 +8,7 @@ import { UnionBudgetModel } from '../src/domain/UnionBudgetModel.js';
 import { MacroObservatoryService } from '../src/application/MacroObservatoryService.js';
 import { GovApiGateway } from '../src/infrastructure/GovApiGateway.js';
 import { LocalSnapshotStore } from '../src/infrastructure/LocalSnapshotStore.js';
+import { PreferenciasStore } from '../src/infrastructure/PreferenciasStore.js';
 import { CenarioUrl } from '../src/ui/CenarioUrl.js';
 
 /**
@@ -243,6 +244,20 @@ try { MacroState.createDefault().with({ baseCalculo: 'municipios' }); } catch (e
 assert(erroEstado, 'Base de cálculo desconhecida é rejeitada');
 const fiscalTri = DebtTrajectoryModel.simulate({ dbggBase: 80, pibBaseTri: 10, growth: 0, selic: 0, ipca: 0, taxRate: 34.2, spendVariation: 0 });
 assert(fiscalTri.trajectoryTri.length === 5 && fiscalTri.debtYear5Tri === fiscalTri.trajectoryTri[4], 'Trajetória também sai em R$ Tri');
+
+// Preferências: só bases conhecidas entram e saem
+const salvos = new Map();
+const preferencias = new PreferenciasStore({ storage: { getItem: k => salvos.get(k) ?? null, setItem: (k, v) => salvos.set(k, v) } });
+assert(preferencias.lerBase() === null, 'Sem escolha salva, não há base padrão');
+preferencias.salvarBase('eleitores');
+assert(preferencias.lerBase() === 'eleitores', 'Base escolhida volta na próxima leitura');
+preferencias.salvarBase('municipios');
+assert(preferencias.lerBase() === 'eleitores', 'Base desconhecida não é gravada');
+salvos.set('calculadora.base', 'municipios');
+assert(preferencias.lerBase() === null, 'Valor salvo inválido é ignorado');
+const bloqueado = new PreferenciasStore({ storage: { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('bloqueado'); } } });
+bloqueado.salvarBase('eleitores');
+assert(bloqueado.lerBase() === null, 'Armazenamento bloqueado não derruba o app');
 
 console.log(`\n========================================`);
 console.log(`Total: ${passed + failed} | Passou: ${passed} | Falhou: ${failed}`);

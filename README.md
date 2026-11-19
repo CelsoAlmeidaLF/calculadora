@@ -23,6 +23,10 @@ A API do Tesouro não manda cabeçalho CORS, então o navegador não consegue co
 
 A última consulta bem-sucedida fica salva no navegador (`localStorage`); ao reabrir, a página mostra esses números enquanto busca os novos.
 
+## CSV e resumo copiado: oficial e cenário
+
+O CSV traz os indicadores oficiais com o valor oficial e, em linhas à parte, o cenário do simulador, com o prefixo `Cenario_` e a fonte "Cenario do simulador (nao e dado oficial)": `Cenario_PIB_Nominal`, `Cenario_Crescimento_Real_PIB`, `Cenario_Carga_Tributaria_Bruta`, `Cenario_Taxa_Selic`, `Cenario_IPCA`, `Cenario_Variacao_Real_Gastos`, `Cenario_Juro_Real_Fisher` e `Cenario_Divida_Projetada_Ano_5`. **Mudança de formato:** saíram as três linhas antigas `Crescimento_Real_PIB`, `Carga_Tributaria_Bruta_Governo_Geral` e `Divida_Projetada_Ano_5` (eram valores dos controles sem rótulo; agora são `Cenario_Crescimento_Real_PIB`, `Cenario_Carga_Tributaria_Bruta` e `Cenario_Divida_Projetada_Ano_5`). Quem lê o CSV por nome de linha precisa atualizar. O resumo copiado segue a mesma divisão (blocos "oficial" e "cenário do simulador"). A última consulta salva no aparelho guarda só valores oficiais, nunca os dos controles.
+
 ## Configurações
 
 A engrenagem do topo abre o painel comum: tema (escuro, claro ou do sistema), base padrão dos cálculos, o que está guardado neste navegador, com opção de apagar, e a busca por versão nova. A base padrão não se aplica a links de cenário: quem recebe um link vê os números de quem enviou.

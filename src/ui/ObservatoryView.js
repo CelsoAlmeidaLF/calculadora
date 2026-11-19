@@ -1,5 +1,5 @@
-import { renderIcons } from './SvgIcons.js?v=20261119-1320';
-import { CenarioUrl } from './CenarioUrl.js?v=20261119-1320';
+import { renderIcons } from './SvgIcons.js?v=20261119-1326';
+import { CenarioUrl } from './CenarioUrl.js?v=20261119-1326';
 
 /** Número no padrão brasileiro com casas fixas: fmt(13.4, 2) → "13,40" */
 const fmt = (v, casas) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -13,8 +13,8 @@ const brl = v => `${v < 0 ? '-' : ''}R$ ${Math.abs(Math.round(v)).toLocaleString
 export class ObservatoryView {
   /**
    * @param {Object} params
-   * @param {import('../application/MacroObservatoryService.js?v=20261119-1320').MacroObservatoryService} params.service
-   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1320').ChartAdapter} params.chartAdapter
+   * @param {import('../application/MacroObservatoryService.js?v=20261119-1326').MacroObservatoryService} params.service
+   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1326').ChartAdapter} params.chartAdapter
    */
   constructor({ service, chartAdapter }) {
     this.service = service;

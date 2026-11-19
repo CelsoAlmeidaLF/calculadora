@@ -3,12 +3,12 @@
  * Seção "Cálculos" do painel de configurações. Os controles de simulação ficam na tela,
  * junto do resultado: aqui entra só o que vale para as próximas visitas.
  */
-import { grupoDeOpcoes } from '../../vendor/stk-gov/stk-gov-config.js?v=20261119-1320';
+import { grupoDeOpcoes } from '../../vendor/stk-gov/stk-gov-config.js?v=20261119-1326';
 
 /**
  * @param {Object} deps
- * @param {import('../infrastructure/PreferenciasStore.js?v=20261119-1320').PreferenciasStore} deps.preferencias
- * @param {import('../application/MacroObservatoryService.js?v=20261119-1320').MacroObservatoryService} deps.service
+ * @param {import('../infrastructure/PreferenciasStore.js?v=20261119-1326').PreferenciasStore} deps.preferencias
+ * @param {import('../application/MacroObservatoryService.js?v=20261119-1326').MacroObservatoryService} deps.service
  */
 export function secaoCalculos({ preferencias, service }) {
   return {

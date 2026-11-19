@@ -1,4 +1,4 @@
-import * as modulo from '../../vendor/stk-gov/stk-gov-parametros.js?v=20261119-1320';
+import * as modulo from '../../vendor/stk-gov/stk-gov-parametros.js?v=20261119-1326';
 
 /**
  * Camada de Infraestrutura: adaptador do ParametrosPort sobre o módulo comum gerado (ADR-001, D5)

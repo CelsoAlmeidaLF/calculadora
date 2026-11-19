@@ -1,13 +1,13 @@
-import { MacroState } from '../domain/MacroState.js?v=20261119-1320';
-import { FisherModel } from '../domain/FisherModel.js?v=20261119-1320';
-import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1320';
-import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1320';
-import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1320';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1320';
-import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1320';
-import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1320';
-import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1320';
-import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1320';
+import { MacroState } from '../domain/MacroState.js?v=20261119-1326';
+import { FisherModel } from '../domain/FisherModel.js?v=20261119-1326';
+import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1326';
+import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1326';
+import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1326';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1326';
+import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1326';
+import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1326';
+import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1326';
+import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1326';
 
 /**
  * Camada de Aplicação: MacroObservatoryService
@@ -16,10 +16,10 @@ import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1320';
 export class MacroObservatoryService {
   /**
    * @param {Object} dependencies
-   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1320').GovApiGateway} dependencies.apiGateway
+   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1326').GovApiGateway} dependencies.apiGateway
    * @param {MacroState} [dependencies.initialState]
-   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1320').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
-   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1320').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
+   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1326').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
+   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1326').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
    */
   constructor({ apiGateway, initialState = null, cache = null, parametros = new ParametrosVendor() } = {}) {
     this.apiGateway = apiGateway;
@@ -94,7 +94,8 @@ export class MacroObservatoryService {
     const fontes = {};
     for (const [, chave] of MacroObservatoryService.FEEDS) {
       if (s.fontes[chave] && s.fontes[chave].aoVivo) {
-        campos[chave] = s[chave];
+        // Só o valor oficial vai para o aparelho: o state também carrega o que os sliders do Simulador alteraram
+        campos[chave] = chave in this.oficial ? this.oficial[chave] : s[chave];
         fontes[chave] = s.fontes[chave];
       }
     }

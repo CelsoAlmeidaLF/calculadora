@@ -417,6 +417,23 @@ assert(linhasCsv.filter(l => l[0].startsWith('Cenario_')).every(l => l[3].starts
 const textoRel = calcAntes.generateConsolidatedReport({ fiscalData: calcAntes.simulateFiscalModel() });
 assert(textoRel.includes('Taxa Meta Selic (oficial): 13,75%') && textoRel.includes('Cenario do simulador: Selic 8,00% a.a., IPCA 9,00% a.a.') && textoRel.includes('Cenario do simulador: Projecao da Divida'), 'Relatório: oficial e cenário em blocos separados, com o cenário rotulado');
 
+// BUG-02: o cache guarda só o oficial, mesmo numa sincronização parcial depois de mexer nos sliders
+const memCache = new Map();
+const cacheBug = new LocalSnapshotStore({ storage: { getItem: k => memCache.get(k) ?? null, setItem: (k, v) => memCache.set(k, v) } });
+let respostaSync = { selic: { value: 13.75, date: '01/11/2026' }, ipca: { value: 4.63, date: '01/10/2026' }, pib: { value: 13.46e6, date: '01/10/2026' }, dbgg: { value: 82.95, date: '01/09/2026' }, desocupacao: { value: 5.2, date: 'jul–set/2026', mes: '09/2026' } };
+const svcCache = new MacroObservatoryService({ apiGateway: { syncAll: async () => respostaSync }, cache: cacheBug });
+await svcCache.syncOfficialFeeds();
+svcCache.updateFiscalParams({ selic: 16, ipca: 9, pibBaseTri: 15 });
+respostaSync = { ipca: { value: 4.70, date: '01/10/2026' } };
+await svcCache.syncOfficialFeeds();
+const gravado = cacheBug.ler().campos;
+assert(gravado.selic === 13.75 && gravado.ipca === 4.70 && gravado.pibBaseTri === 13.46, 'Sincronização parcial depois dos sliders: cache guarda 13,75 / 4,70 / 13,46 (o oficial), não o cenário');
+const reaberto2 = new MacroObservatoryService({ cache: cacheBug });
+reaberto2.restaurarSalvo();
+assert(reaberto2.state.selic === 13.75 && reaberto2.state.ipca === 4.70 && reaberto2.state.pibBaseTri === 13.46, 'Ao reabrir, o salvo mostra os valores oficiais');
+assert(reaberto2.oficial.selic === 13.75 && reaberto2.oficial.pibBaseTri === 13.46 && reaberto2.getMacroDashboardMetrics().oficiais.ipca === 4.70, 'E o painel oficial também');
+assert(svcCache.state.selic === 16 && svcCache.state.pibBaseTri === 15, 'O cenário do usuário continua na tela depois da sincronização parcial');
+
 // 14. Gateway: desocupação da PNAD Contínua
 console.log('\n14. Teste do GovApiGateway (desocupação, IBGE SIDRA 6381)');
 assert(GovApiGateway.trimestreMovel('202609') === 'jul–set/2026' && GovApiGateway.trimestreMovel('202603') === 'jan–mar/2026', 'Trimestre móvel dentro do ano: jul–set/2026');

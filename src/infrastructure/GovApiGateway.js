@@ -1,5 +1,5 @@
-import { UnionSpendingModel } from '../domain/UnionSpendingModel.js?v=20261104-1745';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261104-1745';
+import { UnionSpendingModel } from '../domain/UnionSpendingModel.js?v=20261119-1122';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1122';
 
 /**
  * Camada de Infraestrutura: GovApiGateway

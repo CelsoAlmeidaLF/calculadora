@@ -1,5 +1,5 @@
-import { renderIcons } from './SvgIcons.js?v=20261119-1252';
-import { CenarioUrl } from './CenarioUrl.js?v=20261119-1252';
+import { renderIcons } from './SvgIcons.js?v=20261119-1315';
+import { CenarioUrl } from './CenarioUrl.js?v=20261119-1315';
 
 /** Número no padrão brasileiro com casas fixas: fmt(13.4, 2) → "13,40" */
 const fmt = (v, casas) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -13,8 +13,8 @@ const brl = v => `${v < 0 ? '-' : ''}R$ ${Math.abs(Math.round(v)).toLocaleString
 export class ObservatoryView {
   /**
    * @param {Object} params
-   * @param {import('../application/MacroObservatoryService.js?v=20261119-1252').MacroObservatoryService} params.service
-   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1252').ChartAdapter} params.chartAdapter
+   * @param {import('../application/MacroObservatoryService.js?v=20261119-1315').MacroObservatoryService} params.service
+   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1315').ChartAdapter} params.chartAdapter
    */
   constructor({ service, chartAdapter }) {
     this.service = service;
@@ -412,7 +412,8 @@ export class ObservatoryView {
     if (!lista) return;
     const nomes = {
       bcb_sgs_13762: 'Dívida bruta (BCB SGS 13762)', bcb_sgs_432: 'Selic (BCB SGS 432)', bcb_sgs_13522: 'IPCA 12 meses (BCB SGS 13522)',
-      ibge_sidra_6381: 'Desocupação (IBGE SIDRA 6381)', pib_real_projecao: 'Crescimento real do PIB (premissa)'
+      ibge_sidra_6381: 'Desocupação (IBGE SIDRA 6381)', pib_real_projecao: 'Crescimento real do PIB (premissa)',
+      cenario_ipca: 'IPCA do cenário (slider)', cenario_selic: 'Selic do cenário (slider)', cenario_dbgg: 'Dívida do cenário'
     };
     const situacao = i => `${i.tipo === 'oficial' ? 'oficial' : 'estimativa'}, ${i.status === 'confirmado' ? 'confirmado' : 'a confirmar'}`;
     lista.innerHTML = insumos.map(i =>

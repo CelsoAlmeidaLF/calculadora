@@ -1,13 +1,13 @@
-import { MacroState } from '../domain/MacroState.js?v=20261119-1252';
-import { FisherModel } from '../domain/FisherModel.js?v=20261119-1252';
-import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1252';
-import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1252';
-import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1252';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1252';
-import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1252';
-import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1252';
-import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1252';
-import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1252';
+import { MacroState } from '../domain/MacroState.js?v=20261119-1315';
+import { FisherModel } from '../domain/FisherModel.js?v=20261119-1315';
+import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1315';
+import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1315';
+import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1315';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1315';
+import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1315';
+import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1315';
+import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1315';
+import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1315';
 
 /**
  * Camada de Aplicação: MacroObservatoryService
@@ -16,10 +16,10 @@ import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1252';
 export class MacroObservatoryService {
   /**
    * @param {Object} dependencies
-   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1252').GovApiGateway} dependencies.apiGateway
+   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1315').GovApiGateway} dependencies.apiGateway
    * @param {MacroState} [dependencies.initialState]
-   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1252').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
-   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1252').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
+   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1315').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
+   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1315').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
    */
   constructor({ apiGateway, initialState = null, cache = null, parametros = new ParametrosVendor() } = {}) {
     this.apiGateway = apiGateway;
@@ -27,6 +27,9 @@ export class MacroObservatoryService {
     this.parametros = parametros;
     this.ignorados = [];
     this.state = initialState || MacroObservatoryService.estadoDeReferencia(parametros);
+    // Valor oficial (consulta às fontes ou referência) separado do valor de cenário: os sliders do Simulador mudam
+    // só o state; o índice de miséria e o selo dos insumos partem do oficial.
+    this.oficial = MacroObservatoryService.oficiaisDe(this.state);
     this.listeners = new Set();
   }
 
@@ -76,6 +79,7 @@ export class MacroObservatoryService {
     if (changes.selic !== undefined) changes.selicOficial = changes.selic;
 
     this.state = this.state.with(changes);
+    for (const chave of MacroObservatoryService.CHAVES_OFICIAIS) if (changes[chave] !== undefined) this.oficial[chave] = changes[chave];
     if (this.contarAoVivo() > 0 && this.cache) this.cache.salvar(this.snapshot());
     this.notify();
     return result;
@@ -115,6 +119,7 @@ export class MacroObservatoryService {
         fontes,
         historicos: salvo.historicos || {}
       });
+      for (const chave of MacroObservatoryService.CHAVES_OFICIAIS) if (salvo.campos[chave] !== undefined) this.oficial[chave] = Number(salvo.campos[chave]);
     } catch {
       return false; // salvo de uma versão incompatível: fica com a referência
     }
@@ -166,6 +171,20 @@ export class MacroObservatoryService {
       populacao: v('populacao_residente'),
       pibBaseTri: v('pib_nominal_12m')
     });
+  }
+
+  /** Valores oficiais (ou de referência) do estado, sem a influência dos sliders */
+  static oficiaisDe(state) {
+    return Object.fromEntries(MacroObservatoryService.CHAVES_OFICIAIS.map(c => [c, state[c]]));
+  }
+
+  /**
+   * Insumo que pode ter sido alterado pelo slider: igual ao oficial, vale como o oficial; diferente, é premissa de
+   * cenário (estimativa, a-confirmar), nunca rotulada como oficial.
+   */
+  insumoDeCenario(id, valor, chave) {
+    if (valor === this.oficial[chave]) return this.insumoDeFonte(id, valor, chave);
+    return { id: `cenario_${chave}`, valor, tipo: 'estimativa', status: 'a-confirmar', periodo: 'cenário do simulador' };
   }
 
   /**
@@ -349,9 +368,9 @@ export class MacroObservatoryService {
       dividaPctPib: s.dbgg, jurosRealPct, crescimentoRealPct: s.pibReal, primarioSimuladoPct: fiscal.primarioPct
     });
     const insumos = [
-      this.insumoDeFonte('bcb_sgs_13762', s.dbgg, 'dbgg'),
-      this.insumoDeFonte('bcb_sgs_432', s.selic, 'selic'),
-      this.insumoDeFonte('bcb_sgs_13522', s.ipca, 'ipca'),
+      this.insumoDeCenario('bcb_sgs_13762', s.dbgg, 'dbgg'),
+      this.insumoDeCenario('bcb_sgs_432', s.selic, 'selic'),
+      this.insumoDeCenario('bcb_sgs_13522', s.ipca, 'ipca'),
       this.parametros.insumo('pib_real_projecao')
     ];
     return {
@@ -367,10 +386,10 @@ export class MacroObservatoryService {
   getMiseryIndex() {
     const s = this.state;
     const bruto = MiseryIndexModel.indice({
-      inflacao12mPct: s.ipca, desocupacaoPct: s.desocupacao,
+      inflacao12mPct: this.oficial.ipca, desocupacaoPct: this.oficial.desocupacao,
       mesInflacao: s.fontes.ipca.mes, mesDesocupacao: s.fontes.desocupacao.mes
     });
-    const insumos = [this.insumoDeFonte('bcb_sgs_13522', s.ipca, 'ipca'), this.insumoDeFonte('ibge_sidra_6381', s.desocupacao, 'desocupacao')];
+    const insumos = [this.insumoDeFonte('bcb_sgs_13522', this.oficial.ipca, 'ipca'), this.insumoDeFonte('ibge_sidra_6381', this.oficial.desocupacao, 'desocupacao')];
     return {
       valor: bruto.valor, avisos: bruto.avisos, insumos, selo: this.parametros.selo(insumos, bruto.formulaExata),
       periodos: { inflacao: s.fontes.ipca.periodo, desocupacao: s.fontes.desocupacao.periodo },
@@ -477,3 +496,6 @@ MacroObservatoryService.FEEDS = Object.freeze([
   ['despesas', 'despesas', v => v],          // R$ por função/subfunção, 12 meses (SICONFI Anexo 02)
   ['orcamento', 'orcamento', v => v]         // receita e despesa por grupo, 12 meses (SICONFI Anexo 01)
 ]);
+
+/** Indicadores com valor oficial guardado à parte do cenário */
+MacroObservatoryService.CHAVES_OFICIAIS = Object.freeze(['ipca', 'selic', 'dbgg', 'desocupacao']);

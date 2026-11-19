@@ -368,6 +368,31 @@ assert(refSvc.getMacroDashboardMetrics().desocupacao === 5.2, 'Painel expõe a d
 const relatorio = refSvc.generateConsolidatedReport({ fiscalData: fiscalSvc });
 assert(relatorio.includes('Primario que mantem a divida estavel') && relatorio.includes('Indice de miseria') && relatorio.includes('(estimativa)'), 'Relatório copiado traz o primário estabilizador e o índice de miséria com o selo');
 
+// 13b. BUG-01: o slider do Simulador não pode contaminar o índice de miséria nem rotular premissa como oficial
+console.log('\n13b. Regressão BUG-01 (valor oficial separado do valor de cenário)');
+const gwBug = { syncAll: async () => ({ ipca: { value: 4.63, date: '01/10/2026' }, desocupacao: { value: 5.2, date: 'jul–set/2026', mes: '10/2026' }, selic: { value: 13.75, date: '01/11/2026' } }) };
+const svcBug = new MacroObservatoryService({ apiGateway: gwBug });
+await svcBug.syncOfficialFeeds();
+const antes = svcBug.getMiseryIndex();
+assertCloseTo(antes.valor, 9.83, 1e-9, 'Depois do sync: índice de miséria 9,83');
+assert(antes.selo === 'exato' && antes.avisos.length === 0, 'Depois do sync, mesmo mês: selo exato');
+svcBug.updateFiscalParams({ ipca: 9 });
+const depois = svcBug.getMiseryIndex();
+assertCloseTo(depois.valor, 9.83, 1e-9, 'Slider do IPCA em 9 não muda o índice de miséria (continua 9,83)');
+assert(depois.selo === 'exato' && depois.insumos.every(i => i.tipo === 'oficial' && i.status === 'confirmado'), 'Índice continua exato com insumos oficiais e confirmados');
+const estabSlider = svcBug.getDebtStabilization();
+const insIpca = estabSlider.insumos.find(i => i.id === 'cenario_ipca');
+assert(insIpca && insIpca.valor === 9 && insIpca.tipo === 'estimativa' && insIpca.status === 'a-confirmar', 'Primário estabilizador: IPCA do slider entra como insumo de cenário (estimativa)');
+assert(!estabSlider.insumos.some(i => i.id === 'bcb_sgs_13522') && estabSlider.insumos.some(i => i.id === 'bcb_sgs_432' && i.status === 'confirmado'), 'Selic não mexida segue oficial; IPCA oficial não aparece com o valor do slider');
+svcBug.updateFiscalParams({ ipca: 4.63 });
+assert(svcBug.getDebtStabilization().insumos.some(i => i.id === 'bcb_sgs_13522' && i.status === 'confirmado'), 'Slider de volta ao valor oficial: insumo volta a oficial');
+svcBug.updateFiscalParams({ selic: 10 });
+assert(svcBug.getDebtStabilization().insumos.some(i => i.id === 'cenario_selic' && i.tipo === 'estimativa'), 'Slider da Selic também vira insumo de cenário');
+const salvoBug = new MacroObservatoryService({ cache });
+salvoBug.restaurarSalvo();
+salvoBug.updateFiscalParams({ ipca: 9 });
+assertCloseTo(salvoBug.getMiseryIndex().valor, 4.58 + 5.2, 1e-9, 'Também ao reabrir com dados salvos, o slider não mexe no índice');
+
 // 14. Gateway: desocupação da PNAD Contínua
 console.log('\n14. Teste do GovApiGateway (desocupação, IBGE SIDRA 6381)');
 assert(GovApiGateway.trimestreMovel('202609') === 'jul–set/2026' && GovApiGateway.trimestreMovel('202603') === 'jan–mar/2026', 'Trimestre móvel dentro do ano: jul–set/2026');

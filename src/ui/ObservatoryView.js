@@ -1,5 +1,5 @@
-import { renderIcons } from './SvgIcons.js?v=20261119-1122';
-import { CenarioUrl } from './CenarioUrl.js?v=20261119-1122';
+import { renderIcons } from './SvgIcons.js?v=20261119-1252';
+import { CenarioUrl } from './CenarioUrl.js?v=20261119-1252';
 
 /** Número no padrão brasileiro com casas fixas: fmt(13.4, 2) → "13,40" */
 const fmt = (v, casas) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -13,8 +13,8 @@ const brl = v => `${v < 0 ? '-' : ''}R$ ${Math.abs(Math.round(v)).toLocaleString
 export class ObservatoryView {
   /**
    * @param {Object} params
-   * @param {import('../application/MacroObservatoryService.js?v=20261119-1122').MacroObservatoryService} params.service
-   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1122').ChartAdapter} params.chartAdapter
+   * @param {import('../application/MacroObservatoryService.js?v=20261119-1252').MacroObservatoryService} params.service
+   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1252').ChartAdapter} params.chartAdapter
    */
   constructor({ service, chartAdapter }) {
     this.service = service;
@@ -41,6 +41,8 @@ export class ObservatoryView {
     this.syncStatusSelic = document.getElementById('syncStatusSelic');
     this.feedValIpca = document.getElementById('feedValIpca');
     this.syncStatusIpca = document.getElementById('syncStatusIpca');
+    this.feedValDesocupacao = document.getElementById('feedValDesocupacao');
+    this.syncStatusDesocupacao = document.getElementById('syncStatusDesocupacao');
     this.feedValDbgg = document.getElementById('feedValDbgg');
     this.syncStatusDbgg = document.getElementById('syncStatusDbgg');
     this.feedValPop = document.getElementById('feedValPop');
@@ -63,6 +65,7 @@ export class ObservatoryView {
     this.macroDebtPerCapita = document.getElementById('macroDebtPerCapita');
     this.macroArrecadacao = document.getElementById('macroArrecadacao');
     this.macroDividaPerCapita = document.getElementById('macroDividaPerCapita');
+    this.macroMiseria = document.getElementById('macroMiseria');
 
     // Perfil fiscal por habitante e por eleitor
     this.tblPerfilFiscal = document.getElementById('tblPerfilFiscal');
@@ -94,6 +97,7 @@ export class ObservatoryView {
     this.fInputSpend = document.getElementById('fInputSpend');
     this.fValSpend = document.getElementById('fValSpend');
     this.fBadgeAno5 = document.getElementById('fBadgeAno5');
+    this.fAvisoModelo = document.getElementById('fAvisoModelo');
 
     // Toast
     this.toastNotification = document.getElementById('toastNotification');
@@ -324,6 +328,8 @@ export class ObservatoryView {
     const status = f => `${f.aoVivo ? 'Atualizado' : (f.salvo ? 'Salvo' : 'Referência')} · ${f.periodo}`;
     if (this.syncStatusSelic) this.syncStatusSelic.textContent = status(m.fontes.selic);
     if (this.syncStatusIpca) this.syncStatusIpca.textContent = status(m.fontes.ipca);
+    if (this.feedValDesocupacao) this.feedValDesocupacao.textContent = `${fmt(m.desocupacao, 1)}%`;
+    if (this.syncStatusDesocupacao) this.syncStatusDesocupacao.textContent = status(m.fontes.desocupacao);
     if (this.syncStatusDbgg) this.syncStatusDbgg.textContent = status(m.fontes.dbgg);
     if (this.syncStatusPop) this.syncStatusPop.textContent = status(m.fontes.populacao);
     if (this.feedValDbggTri) this.feedValDbggTri.textContent = `R$ ${fmt(m.dbggTri, 2)}`;
@@ -352,11 +358,66 @@ export class ObservatoryView {
     this.renderGrafico(fluxos, porBase, base);
     document.getElementById('tabelaPerfil')?.classList.toggle('base-eleitores', base.chave === 'eleitores');
 
+    // 2c. Índice de miséria (IPCA 12 meses + desocupação), com selo, períodos e fontes
+    this.renderMiseria();
+
     // 3. Renderizar Matriz de Sensibilidade do Tesouro
     this.renderSensibilityMatrix();
 
     // 4. Renderizar Simulação Fiscal
     this.renderFiscalSimulation();
+  }
+
+  /**
+   * Cartão do índice de miséria: valor, os dois períodos, selo, aviso e a lista de insumos com a origem de cada um
+   */
+  renderMiseria() {
+    if (!this.macroMiseria) return;
+    const r = this.service.getMiseryIndex();
+    this.macroMiseria.textContent = fmt(r.valor, 2);
+    const periodos = document.getElementById('macroMiseriaPeriodos');
+    if (periodos) periodos.textContent = `IPCA 12 meses (${r.periodos.inflacao}) + desocupação (${r.periodos.desocupacao})`;
+    ObservatoryView.pintarSelo(document.getElementById('macroMiseriaSelo'), r.selo);
+    ObservatoryView.mostrarAviso(document.getElementById('macroMiseriaAviso'), r.avisos);
+    ObservatoryView.listarInsumos(document.getElementById('macroMiseriaInsumos'), r.insumos);
+    const spark = document.getElementById('macroMiseriaSpark');
+    if (spark) ObservatoryView.desenharMinigrafico(spark, r.serie);
+  }
+
+  /** Selo "Exato" ou "Estimativa" num badge (o texto vale mesmo sem a cor) */
+  static pintarSelo(el, selo) {
+    if (!el) return;
+    el.textContent = selo === 'exato' ? 'Exato' : 'Estimativa';
+    el.classList.toggle('badge-ok', selo === 'exato');
+    el.classList.toggle('badge-alerta', selo !== 'exato');
+    el.title = selo === 'exato'
+      ? 'Fórmula exata e todos os números oficiais e confirmados'
+      : 'Algum número é estimativa, valor de referência ainda não confirmado, ou a fórmula depende de premissas';
+  }
+
+  /** Mostra os avisos de um resultado (ou esconde o elemento se não houver) */
+  static mostrarAviso(el, avisos) {
+    if (!el) return;
+    const texto = (avisos || []).map(a => a.charAt(0).toUpperCase() + a.slice(1)).join('. ');
+    el.textContent = texto;
+    el.hidden = !texto;
+  }
+
+  /**
+   * Lista os insumos de um resultado: nome da fonte, valor, período e situação (oficial confirmado, estimativa, a confirmar)
+   * @param {HTMLElement|null} lista
+   * @param {Array<{id: string, valor: *, tipo: string, status: string, periodo?: string}>} insumos
+   */
+  static listarInsumos(lista, insumos) {
+    if (!lista) return;
+    const nomes = {
+      bcb_sgs_13762: 'Dívida bruta (BCB SGS 13762)', bcb_sgs_432: 'Selic (BCB SGS 432)', bcb_sgs_13522: 'IPCA 12 meses (BCB SGS 13522)',
+      ibge_sidra_6381: 'Desocupação (IBGE SIDRA 6381)', pib_real_projecao: 'Crescimento real do PIB (premissa)'
+    };
+    const situacao = i => `${i.tipo === 'oficial' ? 'oficial' : 'estimativa'}, ${i.status === 'confirmado' ? 'confirmado' : 'a confirmar'}`;
+    lista.innerHTML = insumos.map(i =>
+      `<li><span>${nomes[i.id] || i.id}</span> <span class="font-mono">${typeof i.valor === 'number' ? fmt(i.valor, 2) : ''}%</span>`
+      + `${i.periodo ? ` · ${i.periodo}` : ''} · <span class="text-muted">${situacao(i)}</span></li>`).join('');
   }
 
   /**
@@ -537,6 +598,12 @@ export class ObservatoryView {
       this.fBadgeAno5.textContent = `Ano 5: ${fiscal.debtYear5.toFixed(1).replace('.', ',')}% PIB`;
     }
 
+    // Aviso do modelo (sem o piso de 20%: a dívida mostra o resultado, e o aviso diz quando passou do intervalo do modelo)
+    ObservatoryView.mostrarAviso(this.fAvisoModelo, fiscal.avisos);
+
+    // Primário que mantém a dívida estável, ao lado do primário do cenário
+    this.renderEstabilizador(fiscal);
+
     // Atualiza gráficos fiscais
     this.chartAdapter.updateDebtTrajectory(fiscal.trajectory, fiscal.trajectoryTri);
 
@@ -554,5 +621,25 @@ export class ObservatoryView {
     if (this.simDividaAno5) this.simDividaAno5.textContent = brl(pb.dividaAno5);
     if (this.simDividaAno5Total) this.simDividaAno5Total.textContent = `R$ ${fmt(fiscal.debtYear5Tri, 2)} Tri (${fmt(fiscal.debtYear5, 1)}% do PIB)`;
     this.chartAdapter.updateBudgetBreakdown(fiscal.composicao.map(g => g.rotulo), fiscal.composicao.map(g => g.bi));
+  }
+
+  /**
+   * Linha do primário estabilizador no Simulador: valor, diferença para o cenário, selo e insumos
+   * @param {Object} fiscal Saída de simulateFiscalModel()
+   */
+  renderEstabilizador(fiscal) {
+    const el = document.getElementById('simEstabilizador');
+    if (!el) return;
+    const r = this.service.getDebtStabilization(fiscal);
+    const pct = v => `${v > 0 ? '+' : (v < 0 ? '-' : '')}${fmt(Math.abs(v), 2)}`;
+    el.textContent = `${fmt(r.valor.primarioPct, 2)}% do PIB`;
+    const dif = document.getElementById('simEstabilizadorDif');
+    if (dif) {
+      const d = r.valor.diferencaPp;
+      const leitura = Math.abs(d) < 0.005 ? 'a dívida fica estável' : (d > 0 ? 'a dívida cai' : 'a dívida sobe');
+      dif.textContent = `O cenário tem ${fmt(fiscal.primarioPct, 2)}% do PIB: ${pct(d)} p.p., ${leitura}`;
+    }
+    ObservatoryView.pintarSelo(document.getElementById('simEstabilizadorSelo'), r.selo);
+    ObservatoryView.listarInsumos(document.getElementById('listaInsumosEstabilizador'), r.insumos);
   }
 }

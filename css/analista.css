@@ -229,3 +229,22 @@
   .tabela-selic tr.baseline-row { padding-left: 10px; padding-right: 8px; border-radius: 8px; background: rgba(61, 214, 140, 0.06) !important; }
   .tabela-selic tr.baseline-row td:first-child { box-shadow: none; }
 }
+
+/* Selo "exato" ou "estimativa", avisos e nota de método dos cálculos novos */
+.selo-linha { display: block; margin-top: 6px; }
+.nota-aviso {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 212, 59, 0.4);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 223, 0, 0.1);
+  color: var(--br-yellow-text);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.nota-aviso[hidden] { display: none; }
+.nota-metodo { margin-top: 8px; font-size: 0.75rem; color: var(--text-secondary); }
+.nota-metodo summary { cursor: pointer; color: var(--text-tertiary); }
+.nota-metodo p { margin: 6px 0; line-height: 1.5; }
+.lista-insumos { margin: 4px 0 0; padding-left: 1.1rem; line-height: 1.5; }
+#cardEstabilizador, #cardMiseria { min-width: 0; }

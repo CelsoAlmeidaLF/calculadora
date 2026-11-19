@@ -1,10 +1,13 @@
-import { MacroState } from '../domain/MacroState.js?v=20261119-1122';
-import { FisherModel } from '../domain/FisherModel.js?v=20261119-1122';
-import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1122';
-import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1122';
-import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1122';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1122';
-import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1122';
+import { MacroState } from '../domain/MacroState.js?v=20261119-1252';
+import { FisherModel } from '../domain/FisherModel.js?v=20261119-1252';
+import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1252';
+import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1252';
+import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1252';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1252';
+import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1252';
+import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1252';
+import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1252';
+import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1252';
 
 /**
  * Camada de Aplicação: MacroObservatoryService
@@ -13,15 +16,17 @@ import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1122';
 export class MacroObservatoryService {
   /**
    * @param {Object} dependencies
-   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1122').GovApiGateway} dependencies.apiGateway
+   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1252').GovApiGateway} dependencies.apiGateway
    * @param {MacroState} [dependencies.initialState]
-   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1122').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
+   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1252').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
+   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1252').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
    */
-  constructor({ apiGateway, initialState = null, cache = null } = {}) {
+  constructor({ apiGateway, initialState = null, cache = null, parametros = new ParametrosVendor() } = {}) {
     this.apiGateway = apiGateway;
     this.cache = cache;
+    this.parametros = parametros;
     this.ignorados = [];
-    this.state = initialState || MacroState.createDefault();
+    this.state = initialState || MacroObservatoryService.estadoDeReferencia(parametros);
     this.listeners = new Set();
   }
 
@@ -60,6 +65,9 @@ export class MacroObservatoryService {
       if (valido) {
         changes[chave] = converter(item.value);
         changes.fontes[chave] = { periodo: chave === 'selic' ? 'vigente' : MacroObservatoryService.periodo(item.date), aoVivo: true };
+        // Mês de referência ('mm/aaaa'): permite conferir se duas séries são do mesmo período (índice de miséria)
+        const mes = item.mes || MacroObservatoryService.mes(item.date);
+        if (mes) changes.fontes[chave].mes = mes;
         if (Array.isArray(item.historico) && item.historico.length > 1) {
           changes.historicos[chave] = item.historico.map(p => ({ data: p.data, valor: converter(p.valor) }));
         }
@@ -132,6 +140,44 @@ export class MacroObservatoryService {
     if (!m) return String(data || '');
     const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
     return `${meses[Number(m[1]) - 1]}/${m[2]}`;
+  }
+
+  /**
+   * Mês de uma data das APIs: "01/09/2026" → "09/2026"; outros formatos (ano, trimestre) → null
+   * @param {string} data
+   */
+  static mes(data) {
+    const m = /^\d{2}\/(\d{2}\/\d{4})$/.exec(String(data || ''));
+    return m ? m[1] : null;
+  }
+
+  /**
+   * Estado inicial: os valores de referência do módulo comum de parâmetros (hoje) sobre o padrão do domínio.
+   * Parâmetro sem vigência hoje mantém o padrão do domínio.
+   * @param {Object} parametros ParametrosPort
+   */
+  static estadoDeReferencia(parametros) {
+    const v = id => parametros.valor(id);
+    return MacroState.createDefault().with({
+      taxRatio: v('carga_tributaria_bruta_gg'),
+      pibReal: v('pib_real_projecao'),
+      custoSelicPontoBi: v('custo_selic_ponto_bi'),
+      eleitores: v('eleitorado_tse'),
+      populacao: v('populacao_residente'),
+      pibBaseTri: v('pib_nominal_12m')
+    });
+  }
+
+  /**
+   * Insumo de um indicador do estado, no formato de Resultado.insumos: oficial; confirmado só se veio de uma
+   * consulta às fontes (ao vivo ou salva do aparelho), e a-confirmar se é o valor de referência embutido.
+   */
+  insumoDeFonte(id, valor, chave) {
+    const fonte = this.state.fontes[chave];
+    return {
+      id, valor, tipo: 'oficial', status: fonte.aoVivo || fonte.salvo ? 'confirmado' : 'a-confirmar',
+      periodo: fonte.periodo
+    };
   }
 
   /**
@@ -227,6 +273,7 @@ export class MacroObservatoryService {
       receitaPctPib: Number(((arrecadacaoBi / pibNominalBi) * 100).toFixed(2)),
       selic: s.selic,
       ipca: s.ipca,
+      desocupacao: s.desocupacao,
       juroReal: Number(juroReal.toFixed(2)),
       custoJurosBi: Number(custoJurosBi.toFixed(1)),
       impostoPerCapita: Math.round(impostoPerCapita),
@@ -271,7 +318,10 @@ export class MacroObservatoryService {
       custoSelicPontoBi: s.custoSelicPontoBi,
       jurosBaseBi: UnionBudgetModel.resumo(s.orcamento).jurosBi,
       selicReferencia: s.selicOficial,
-      gruposOrcamento: UnionBudgetModel.resumo(s.orcamento).grupos
+      gruposOrcamento: UnionBudgetModel.resumo(s.orcamento).grupos,
+      receitaUniaoPctPib: this.parametros.valor('receita_uniao_pct_pib'),
+      despesaUniaoPctPib: this.parametros.valor('despesa_uniao_pct_pib'),
+      cargaReferenciaPct: this.parametros.valor('carga_tributaria_bruta_gg')
     });
 
     // Resultado da simulação dividido pela base escolhida (habitante ou eleitor)
@@ -288,6 +338,47 @@ export class MacroObservatoryService {
   }
 
   /**
+   * Superávit primário que estabiliza a dívida (spec 3.1), com o primário do cenário para comparar
+   * @param {Object} [fiscal] Saída de simulateFiscalModel() (evita simular de novo)
+   * @returns {{valor: {primarioPct: number, diferencaPp: number}, selo: string, insumos: Object[], avisos: string[], dividaPctPib: number, jurosRealPct: number, crescimentoRealPct: number}}
+   */
+  getDebtStabilization(fiscal = this.simulateFiscalModel()) {
+    const s = this.state;
+    const jurosRealPct = FisherModel.calculateRealRate(s.selic, s.ipca);
+    const bruto = DebtStabilizationModel.primarioEstabilizador({
+      dividaPctPib: s.dbgg, jurosRealPct, crescimentoRealPct: s.pibReal, primarioSimuladoPct: fiscal.primarioPct
+    });
+    const insumos = [
+      this.insumoDeFonte('bcb_sgs_13762', s.dbgg, 'dbgg'),
+      this.insumoDeFonte('bcb_sgs_432', s.selic, 'selic'),
+      this.insumoDeFonte('bcb_sgs_13522', s.ipca, 'ipca'),
+      this.parametros.insumo('pib_real_projecao')
+    ];
+    return {
+      valor: bruto.valor, avisos: bruto.avisos, insumos, selo: this.parametros.selo(insumos, bruto.formulaExata),
+      dividaPctPib: s.dbgg, jurosRealPct, crescimentoRealPct: s.pibReal
+    };
+  }
+
+  /**
+   * Índice de miséria (spec 3.2): inflação em 12 meses + desocupação, com os dois períodos e o histórico
+   * @returns {{valor: number, selo: string, insumos: Object[], avisos: string[], periodos: {inflacao: string, desocupacao: string}, serie: Array<{data: string, valor: number}>}}
+   */
+  getMiseryIndex() {
+    const s = this.state;
+    const bruto = MiseryIndexModel.indice({
+      inflacao12mPct: s.ipca, desocupacaoPct: s.desocupacao,
+      mesInflacao: s.fontes.ipca.mes, mesDesocupacao: s.fontes.desocupacao.mes
+    });
+    const insumos = [this.insumoDeFonte('bcb_sgs_13522', s.ipca, 'ipca'), this.insumoDeFonte('ibge_sidra_6381', s.desocupacao, 'desocupacao')];
+    return {
+      valor: bruto.valor, avisos: bruto.avisos, insumos, selo: this.parametros.selo(insumos, bruto.formulaExata),
+      periodos: { inflacao: s.fontes.ipca.periodo, desocupacao: s.fontes.desocupacao.periodo },
+      serie: MiseryIndexModel.serie(s.historicos.ipca, s.historicos.desocupacao)
+    };
+  }
+
+  /**
    * Gera o texto executivo do relatório consolidado
    */
   generateConsolidatedReport({ fiscalData } = {}) {
@@ -296,6 +387,9 @@ export class MacroObservatoryService {
     const p = this.getPublicFinanceProfile();
     const brl = v => `R$ ${v.toLocaleString('pt-BR')}`;
     const tri = bi => `R$ ${(bi / 1000).toFixed(2).replace('.', ',')} Tri`;
+    const estab = this.getDebtStabilization(fiscalData || undefined);
+    const miseria = this.getMiseryIndex();
+    const seloTexto = r => (r.selo === 'exato' ? 'exato' : 'estimativa');
     const linhaBase = l => `* ${l.rotulo}: ${tri(l.bi)} | ${brl(l.porHabitante)}/hab | ${brl(l.porEleitor)}/eleitor`;
 
     return `RELATORIO DO OBSERVATORIO MACROECONOMICO & FISCAL DO BRASIL
@@ -311,6 +405,8 @@ FONTES OFICIAIS SINCRONIZADAS:
 * Impostos e contribuicoes federais (Uniao, 12 meses): R$ ${(m.arrecadacaoBi / 1000).toFixed(2).replace('.', ',')} Tri = ${m.receitaPctPib.toFixed(1).replace('.', ',')}% do PIB
 * Divida Bruta DBGG (Atual): ${s.dbgg.toFixed(2).replace('.', ',')}% do PIB = R$ ${s.dbggTri.toFixed(2).replace('.', ',')} Tri
 * Projecao da Divida (Ano 5): ${fiscalData ? fiscalData.debtYear5.toFixed(1).replace('.', ',') : '-'}% do PIB
+* Primario que mantem a divida estavel: ${estab.valor.primarioPct.toFixed(2).replace('.', ',')}% do PIB (${seloTexto(estab)})
+* Indice de miseria (IPCA 12 meses ${miseria.periodos.inflacao} + desocupacao ${miseria.periodos.desocupacao}): ${miseria.valor.toFixed(2).replace('.', ',')} (${seloTexto(miseria)})
 
 PERFIL FISCAL PER CAPITA (Populacao: ${s.populacao.toLocaleString('pt-BR')} hab):
 * Impostos federais por Habitante: R$ ${m.impostoPerCapita.toLocaleString('pt-BR')} / ano
@@ -373,6 +469,7 @@ Gerado pelo Observatorio Macroeconomico Autonomo (Systekna / STK-GOVERNO-BRAZIL)
 MacroObservatoryService.FEEDS = Object.freeze([
   ['selic', 'selic', v => v],
   ['ipca', 'ipca', v => v],
+  ['desocupacao', 'desocupacao', v => v], // PNAD Contínua, trimestre móvel (IBGE SIDRA 6381)
   ['dbgg', 'dbgg', v => v],
   ['dbggReais', 'dbggTri', v => v / 1e6], // R$ milhões → R$ Tri
   ['pib', 'pibBaseTri', v => v / 1e6],    // R$ milhões → R$ Tri

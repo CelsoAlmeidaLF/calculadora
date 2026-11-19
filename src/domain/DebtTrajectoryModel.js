@@ -1,10 +1,13 @@
-import { FisherModel } from './FisherModel.js?v=20261119-1122';
-import { UnionBudgetModel } from './UnionBudgetModel.js?v=20261119-1122';
+import { FisherModel } from './FisherModel.js?v=20261119-1252';
+import { UnionBudgetModel } from './UnionBudgetModel.js?v=20261119-1252';
 
 /**
  * Camada de Domínio: Modelo de Sustentabilidade e Trajetória da Dívida Pública (Tesouro / FMI)
  * Equação dinâmica de evolução da dívida em proporção do PIB:
  * Δd_t = d_{t-1} * ((r - g) / (1 + g)) - s_t
+ *
+ * Sem piso: uma dívida que "bate no chão" esconde o resultado em vez de mostrá-lo (ADR-001, decisão do Celso de 19/11/2026).
+ * Quando a trajetória sai do INTERVALO_MODELO, o resultado traz um aviso.
  */
 export class DebtTrajectoryModel {
   /**
@@ -21,7 +24,12 @@ export class DebtTrajectoryModel {
    * @param {number} params.jurosBaseBi Juros pagos pela União em 12 meses (R$ Bi, SICONFI)
    * @param {number} params.selicReferencia Selic vigente quando os juros foram pagos (% a.a.)
    * @param {Array<{chave:string, rotulo:string, bi:number}>} params.gruposOrcamento Despesa real da União por grupo (UnionBudgetModel.resumo)
+   * @param {number} [params.receitaUniaoPctPib=19.25] Receita da União em % do PIB na carga de referência (parâmetro receita_uniao_pct_pib)
+   * @param {number} [params.despesaUniaoPctPib=19.40] Despesa da União em % do PIB (parâmetro despesa_uniao_pct_pib)
+   * @param {number} [params.cargaReferenciaPct=32.22] Carga tributária em que a receita da União vale receitaUniaoPctPib
+   *   (parâmetro carga_tributaria_bruta_gg); a receita varia na proporção taxRate / cargaReferenciaPct
    * @param {number} [params.horizon=5] Horizonte em anos
+   * Os três valores acima são os de referência do módulo comum de parâmetros; o serviço sempre passa os lidos de lá.
    */
   static simulate({
     dbggBase,
@@ -36,6 +44,9 @@ export class DebtTrajectoryModel {
     jurosBaseBi = Number(selic) * Number(custoSelicPontoBi),
     selicReferencia = selic,
     gruposOrcamento = [],
+    receitaUniaoPctPib = 19.25,
+    despesaUniaoPctPib = 19.40,
+    cargaReferenciaPct = 32.22,
     horizon = 5
   }) {
     const juroRealPct = FisherModel.calculateRealRate(selic, ipca);
@@ -49,10 +60,10 @@ export class DebtTrajectoryModel {
     const custoJurosBi = UnionBudgetModel.jurosCenario(jurosBaseBi, selic, selicReferencia, custoSelicPontoBi);
 
     // Estimativa de Balanço Primário Proporcional da União
-    // Receitas da União ~19,25% do PIB ajustado pela carga tributária
-    const receitasUniao = pibNominalProjBi * 0.1925 * (Number(taxRate) / 34.2);
-    // Despesas da União ~19,40% do PIB ajustadas pelo crescimento real de gastos
-    const despesasUniao = (pibNominalProjBi * 0.194) * (1 + Number(spendVariation) / 100);
+    // Receitas da União (receitaUniaoPctPib do PIB na carga de referência), ajustadas pela carga tributária
+    const receitasUniao = pibNominalProjBi * (receitaUniaoPctPib / 100) * (Number(taxRate) / cargaReferenciaPct);
+    // Despesas da União (despesaUniaoPctPib do PIB) ajustadas pelo crescimento real de gastos
+    const despesasUniao = (pibNominalProjBi * (despesaUniaoPctPib / 100)) * (1 + Number(spendVariation) / 100);
     const primarioBi = receitasUniao - despesasUniao;
     const primarioPct = (primarioBi / pibNominalProjBi) * 100;
     const s = primarioPct / 100;
@@ -62,10 +73,13 @@ export class DebtTrajectoryModel {
     let pibAnoTri = Number(pibBaseTri);
     const trajectory = [];
     const trajectoryTri = [];
+    const { minPct, maxPct } = DebtTrajectoryModel.INTERVALO_MODELO;
+    let foraDoIntervalo = false;
 
     for (let i = 1; i <= horizon; i++) {
       const delta = currentDebt * ((r - g) / (1 + g)) - (s * 100);
-      currentDebt = Math.max(20.0, currentDebt + delta);
+      currentDebt += delta;
+      if (currentDebt < minPct || currentDebt > maxPct) foraDoIntervalo = true;
       pibAnoTri *= (1 + g) * (1 + Number(ipca) / 100);
       trajectory.push(Number(currentDebt.toFixed(2)));
       trajectoryTri.push(Number((pibAnoTri * currentDebt / 100).toFixed(3)));
@@ -85,7 +99,18 @@ export class DebtTrajectoryModel {
       trajectoryTri,
       debtYear5: trajectory[horizon - 1],
       debtYear5Tri: trajectoryTri[horizon - 1],
+      foraDoIntervalo,
+      avisos: foraDoIntervalo ? [DebtTrajectoryModel.AVISO_FORA_DO_INTERVALO] : [],
       composicao
     };
   }
 }
+
+/**
+ * Faixa de dívida (% do PIB) em que o modelo ainda faz sentido: dívida bruta negativa não existe, e acima do
+ * máximo as premissas de juro e crescimento constantes deixam de valer. É limite de validade do modelo, não dado.
+ */
+DebtTrajectoryModel.INTERVALO_MODELO = Object.freeze({ minPct: 0, maxPct: 200 });
+
+/** Aviso mostrado quando algum ano da trajetória sai do INTERVALO_MODELO */
+DebtTrajectoryModel.AVISO_FORA_DO_INTERVALO = 'trajetória fora do intervalo do modelo';

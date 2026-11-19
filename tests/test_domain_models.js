@@ -1,6 +1,9 @@
 import { FisherModel } from '../src/domain/FisherModel.js';
 import { DebtTrajectoryModel } from '../src/domain/DebtTrajectoryModel.js';
 import { SensibilityMatrixModel } from '../src/domain/SensibilityMatrixModel.js';
+import { DebtStabilizationModel } from '../src/domain/DebtStabilizationModel.js';
+import { MiseryIndexModel } from '../src/domain/MiseryIndexModel.js';
+import { ParametrosVendor } from '../src/infrastructure/ParametrosVendor.js';
 import { MacroState } from '../src/domain/MacroState.js';
 import { PublicFinanceModel } from '../src/domain/PublicFinanceModel.js';
 import { UnionSpendingModel } from '../src/domain/UnionSpendingModel.js';
@@ -130,7 +133,8 @@ const anexos01 = { '2025-6': anexo01(1100e9, 1500e9, 3600e9, 360e9), '2025-4': a
 globalThis.fetch = async (url) => {
   urls.push(url);
   let body;
-  if (url.includes('ibge')) body = [{ resultados: [{ series: [{ serie: { '2026': '214211951' } }] }] }];
+  if (url.includes('agregados/6381')) body = [{ resultados: [{ series: [{ serie: { '202608': '5.3', '202609': '5.2' } }] }] }];
+  else if (url.includes('ibge')) body = [{ resultados: [{ series: [{ serie: { '2026': '214211951' } }] }] }];
   else if (url.includes('siconfi')) {
     const [, ano, bim] = /an_exercicio=(\d+)&nr_periodo=(\d)/.exec(url);
     body = (url.includes('Anexo%2001') ? anexos01 : rreos)[`${ano}-${bim}`] || { items: [] };
@@ -152,7 +156,7 @@ assert(mensal.length === 2 && mensal[1].valor === 14.25, 'Série diária vira um
 assert(sync.populacao && sync.populacao.value === 214211951 && sync.populacao.date === '2026', 'População lida do IBGE SIDRA 6579');
 const service = new MacroObservatoryService({ apiGateway: new GovApiGateway() });
 await service.syncOfficialFeeds();
-assert(service.contarAoVivo() === 8 && service.totalSincronizavel() === 8 && service.state.fontes.ipca.periodo === 'set/2026', 'Sincronização marca os 8 indicadores como ao vivo');
+assert(service.contarAoVivo() === 9 && service.totalSincronizavel() === 9 && service.state.fontes.ipca.periodo === 'set/2026', 'Sincronização marca os 9 indicadores como ao vivo');
 assert(service.getPublicFinanceProfile().imposto.bi === 2800 && service.getPublicFinanceProfile().juros.bi === 500, 'Receita e juros ao vivo da União entram no perfil');
 assert(service.state.historicos.ipca.length === 2 && service.state.selicOficial === 4.58, 'Sincronização guarda o histórico e a Selic oficial');
 assert(service.state.fontes.despesas.periodo === 'set/2025–ago/2026' && service.getPublicFinanceProfile().gastosTotal.bi === 4100, 'Gastos ao vivo do Tesouro entram no perfil');
@@ -162,7 +166,7 @@ assert(service.state.fontes.eleitores.aoVivo === false, 'Eleitorado continua com
 const urlsAntes = urls.length;
 const semTesouro = new MacroObservatoryService({ apiGateway: new GovApiGateway({ incluirTesouro: false }) });
 await semTesouro.syncOfficialFeeds();
-assert(!urls.slice(urlsAntes).some(u => u.includes('siconfi')) && semTesouro.totalSincronizavel() === 6 && semTesouro.contarAoVivo() === 6, 'No navegador o Tesouro não é consultado nem contado (6 de 6)');
+assert(!urls.slice(urlsAntes).some(u => u.includes('siconfi')) && semTesouro.totalSincronizavel() === 7 && semTesouro.contarAoVivo() === 7, 'No navegador o Tesouro não é consultado nem contado (7 de 7)');
 globalThis.fetch = async () => { throw new Error('offline'); };
 const offline = new MacroObservatoryService({ apiGateway: new GovApiGateway() });
 await offline.syncOfficialFeeds();
@@ -258,6 +262,124 @@ assert(preferencias.lerBase() === null, 'Valor salvo inválido é ignorado');
 const bloqueado = new PreferenciasStore({ storage: { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('bloqueado'); } } });
 bloqueado.salvarBase('eleitores');
 assert(bloqueado.lerBase() === null, 'Armazenamento bloqueado não derruba o app');
+
+// 9. Superávit primário que estabiliza a dívida (spec 3.1)
+console.log('\n9. Teste do DebtStabilizationModel (primário que mantém a dívida estável)');
+const estab = args => DebtStabilizationModel.primarioEstabilizador(args);
+assertCloseTo(estab({ dividaPctPib: 80, jurosRealPct: 5, crescimentoRealPct: 2 }).valor.primarioPct, 2.3529, 0.0001, 'T1: d=80, r=5, g=2 → s* = 2,3529% do PIB');
+assert(estab({ dividaPctPib: 80, jurosRealPct: 2, crescimentoRealPct: 2 }).valor.primarioPct === 0, 'T2: r = g → primário estabilizador é 0');
+assertCloseTo(estab({ dividaPctPib: 80, jurosRealPct: 1, crescimentoRealPct: 3 }).valor.primarioPct, -1.5534, 0.0001, 'T3: r < g → s* negativo (pode haver déficit)');
+let erroEstab = 0;
+for (const args of [
+  { dividaPctPib: 80, jurosRealPct: 5, crescimentoRealPct: -100 }, { dividaPctPib: 80, jurosRealPct: 5, crescimentoRealPct: -150 },
+  { dividaPctPib: 80, jurosRealPct: -100, crescimentoRealPct: 2 }, { dividaPctPib: -1, jurosRealPct: 5, crescimentoRealPct: 2 },
+  { dividaPctPib: NaN, jurosRealPct: 5, crescimentoRealPct: 2 }, { dividaPctPib: 80, jurosRealPct: Infinity, crescimentoRealPct: 2 },
+  { dividaPctPib: 80, jurosRealPct: 5, crescimentoRealPct: 2, primarioSimuladoPct: NaN }
+]) { try { estab(args); } catch (e) { if (e instanceof RangeError) erroEstab++; } }
+assert(erroEstab === 7, 'T4: g ≤ −100%, r ≤ −100%, dívida negativa e entradas não finitas lançam RangeError (7 de 7)');
+// T5: coerência com a dinâmica do DebtTrajectoryModel: com s = s*, a dívida não muda
+const sEstrela = estab({ dividaPctPib: 80, jurosRealPct: 5, crescimentoRealPct: 2 }).valor.primarioPct;
+const dinamica = 80 + 80 * ((0.05 - 0.02) / 1.02) - sEstrela;
+assert(Math.abs(dinamica - 80) < 1e-9, 'T5: d + d·(r−g)/(1+g) − s* = d (tolerância 1e-9)');
+const comDif = estab({ dividaPctPib: 80, jurosRealPct: 5, crescimentoRealPct: 2, primarioSimuladoPct: 1 });
+assertCloseTo(comDif.valor.diferencaPp, 1 - 2.352941, 1e-5, 'Diferença = primário simulado − estabilizador (negativo: a dívida sobe)');
+assert(comDif.formulaExata === false && estab({ dividaPctPib: 80, jurosRealPct: 5, crescimentoRealPct: 2 }).valor.diferencaPp === undefined, 'Fórmula não é exata (premissas de cenário) e sem primário simulado não há diferença');
+
+// 10. Índice de miséria (spec 3.2)
+console.log('\n10. Teste do MiseryIndexModel (inflação 12 meses + desocupação)');
+const m1 = MiseryIndexModel.indice({ inflacao12mPct: 4.58, desocupacaoPct: 5.60, mesInflacao: '09/2026', mesDesocupacao: '09/2026' });
+assertCloseTo(m1.valor, 10.18, 1e-9, 'T1: 4,58 + 5,60 = 10,18');
+assert(m1.formulaExata === true && m1.avisos.length === 0, 'Mesmo mês de referência: fórmula exata, sem aviso');
+const m2 = MiseryIndexModel.indice({ inflacao12mPct: 4.63, desocupacaoPct: 5.2, mesInflacao: '10/2026', mesDesocupacao: '09/2026' });
+assert(m2.formulaExata === false && m2.avisos.length === 1 && m2.avisos[0].startsWith('períodos diferentes') && m2.avisos[0].includes('10/2026') && m2.avisos[0].includes('09/2026'), 'T2: períodos diferentes → selo estimativa e aviso com os dois períodos');
+assert(MiseryIndexModel.indice({ inflacao12mPct: 4, desocupacaoPct: 5 }).formulaExata === true, 'Sem meses informados não há como acusar período diferente');
+let erroMiseria = 0;
+for (const args of [{ inflacao12mPct: NaN, desocupacaoPct: 5 }, { inflacao12mPct: 4, desocupacaoPct: undefined }, { inflacao12mPct: -100, desocupacaoPct: 5 }, { inflacao12mPct: 4, desocupacaoPct: -1 }, { inflacao12mPct: 4, desocupacaoPct: 101 }]) {
+  try { MiseryIndexModel.indice(args); } catch (e) { if (e instanceof RangeError) erroMiseria++; }
+}
+assert(erroMiseria === 5, 'T3: NaN, indefinido, inflação ≤ −100% e desocupação fora de 0 a 100 lançam RangeError (5 de 5)');
+const serieMiseria = MiseryIndexModel.serie(
+  [{ data: '08/2026', valor: 4.44 }, { data: '09/2026', valor: 4.58 }, { data: '10/2026', valor: 4.63 }],
+  [{ data: '08/2026', valor: 5.3 }, { data: '09/2026', valor: 5.2 }]);
+assert(serieMiseria.length === 2 && serieMiseria[1].data === '09/2026' && Math.abs(serieMiseria[1].valor - 9.78) < 1e-9, 'Série do índice só nos meses em que as duas séries existem');
+assert(MiseryIndexModel.serie().length === 0, 'Sem séries, a série do índice é vazia');
+
+// 11. Trajetória sem a trava de 20% (decisão do Celso, 19/11/2026)
+console.log('\n11. Teste da trajetória sem piso e com aviso');
+const base11 = { dbggBase: 80, pibBaseTri: 13.4, growth: 2, selic: 13.75, ipca: 4.58, taxRate: 32.22, spendVariation: 0 };
+const padrao = DebtTrajectoryModel.simulate(base11);
+assertCloseTo(padrao.primarioPct, -0.15, 0.005, 'Na carga de referência o primário é receita 19,25% − despesa 19,40% = −0,15% do PIB (comportamento migrado)');
+assert(padrao.foraDoIntervalo === false && padrao.avisos.length === 0, 'Trajetória normal não traz aviso');
+const superavit = DebtTrajectoryModel.simulate({ ...base11, dbggBase: 30, taxRate: 42, spendVariation: -6 });
+assert(superavit.trajectory.some(d => d < 20), 'A dívida pode passar de 20% do PIB para baixo: o piso saiu');
+const negativa = DebtTrajectoryModel.simulate({ ...base11, dbggBase: 5, taxRate: 42, spendVariation: -6 });
+assert(negativa.trajectory.some(d => d < 0), 'Sem piso, a dívida projetada pode ficar negativa (e o modelo avisa)');
+assert(negativa.foraDoIntervalo === true && negativa.avisos[0] === 'trajetória fora do intervalo do modelo', 'Fora do intervalo do modelo: aviso "trajetória fora do intervalo do modelo"');
+const explode = DebtTrajectoryModel.simulate({ ...base11, dbggBase: 190, growth: -2, selic: 16, ipca: 2, spendVariation: 6 });
+assert(Math.max(...explode.trajectory) > 200 && explode.foraDoIntervalo === true, 'Acima de 200% do PIB também é fora do intervalo do modelo');
+assert(DebtTrajectoryModel.INTERVALO_MODELO.minPct === 0 && Object.isFrozen(DebtTrajectoryModel.INTERVALO_MODELO), 'O intervalo do modelo é uma constante congelada');
+
+// 12. Parâmetros comuns no 8.3 (ADR-001): defaults do domínio batem com o módulo e o adaptador faz a ponte
+console.log('\n12. Teste dos parâmetros comuns (adaptador e defaults do domínio)');
+const params = new ParametrosVendor();
+const estadoRef = MacroObservatoryService.estadoDeReferencia(params);
+const dominio = MacroState.createDefault();
+assert(params.valor('carga_tributaria_bruta_gg') === 32.22 && estadoRef.taxRatio === 32.22, 'Carga tributária de referência = 32,22% (Tesouro, 2024), não mais 34,2%');
+assert(dominio.taxRatio === params.valor('carga_tributaria_bruta_gg') && dominio.pibReal === params.valor('pib_real_projecao') && dominio.custoSelicPontoBi === params.valor('custo_selic_ponto_bi'), 'Defaults do MacroState = parâmetros (taxRatio, pibReal, custoSelicPontoBi)');
+assert(dominio.eleitores === params.valor('eleitorado_tse') && dominio.populacao === params.valor('populacao_residente') && dominio.pibBaseTri === params.valor('pib_nominal_12m'), 'Defaults do MacroState = parâmetros (eleitores, população, PIB de 12 meses)');
+const explicito = { ...base11, receitaUniaoPctPib: params.valor('receita_uniao_pct_pib'), despesaUniaoPctPib: params.valor('despesa_uniao_pct_pib'), cargaReferenciaPct: params.valor('carga_tributaria_bruta_gg') };
+assert(JSON.stringify(DebtTrajectoryModel.simulate(base11)) === JSON.stringify(DebtTrajectoryModel.simulate(explicito)), 'Defaults de DebtTrajectoryModel (receita 19,25, despesa 19,40, carga de referência) = parâmetros');
+assert(SensibilityMatrixModel.generate({ selicAtual: 10, ipcaAtual: 4, populacao: 1e8, jurosBaseBi: 500 }).find(c => c.delta === 1).diffBi === params.valor('custo_selic_ponto_bi'), 'Default da matriz de sensibilidade = custo por ponto de Selic do parâmetro');
+assert(params.vigencia('pib_nominal_12m').fonte.url.startsWith('https://') && params.valor('pib_nominal_12m') !== params.valor('pib_nominal_anual'), 'PIB de 12 meses (BCB SGS 4382, usado aqui) e PIB do ano fechado (IBGE) são parâmetros distintos');
+assert(params.insumo('pib_real_projecao').tipo === 'estimativa' && params.insumo('pib_real_projecao').status === 'a-confirmar', 'Crescimento real do PIB entra como insumo estimativa / a-confirmar');
+const falso = new ParametrosVendor({ valor: () => undefined, selo: () => 'exato' });
+assert(MacroObservatoryService.estadoDeReferencia(falso).taxRatio === dominio.taxRatio, 'Parâmetro sem vigência mantém o padrão do domínio');
+
+// 13. Serviço: primário estabilizador e índice de miséria com selo e insumos
+console.log('\n13. Teste do serviço (selo, insumos e períodos)');
+const refSvc = new MacroObservatoryService({});
+const estabRef = refSvc.getDebtStabilization();
+assert(estabRef.selo === 'estimativa', 'Primário estabilizador é sempre estimativa (g e r são premissas)');
+assert(estabRef.insumos.map(i => i.id).join() === 'bcb_sgs_13762,bcb_sgs_432,bcb_sgs_13522,pib_real_projecao', 'Insumos: DBGG, Selic, IPCA e crescimento do parâmetro');
+assert(estabRef.insumos.every(i => i.status === 'a-confirmar'), 'Sem consulta às fontes, os insumos são valores de referência (a-confirmar)');
+const rEsperado = FisherModel.calculateRealRate(refSvc.state.selic, refSvc.state.ipca);
+assertCloseTo(estabRef.valor.primarioPct, refSvc.state.dbgg * ((rEsperado / 100) - (refSvc.state.pibReal / 100)) / (1 + refSvc.state.pibReal / 100), 1e-9, 'Valor = d·(r−g)/(1+g) com r de Fisher (Selic e IPCA) e g do estado');
+assertCloseTo(estabRef.valor.diferencaPp, refSvc.simulateFiscalModel().primarioPct - estabRef.valor.primarioPct, 1e-12, 'Diferença é o primário do cenário menos o estabilizador');
+const miseriaRef = refSvc.getMiseryIndex();
+assertCloseTo(miseriaRef.valor, 4.58 + 5.2, 1e-9, 'Índice de miséria de referência = IPCA + desocupação do estado');
+assert(miseriaRef.selo === 'estimativa' && miseriaRef.avisos.length === 0, 'Referência (não atualizada): estimativa, mas sem aviso de períodos (os dois são de set/2026)');
+await service.syncOfficialFeeds();
+const miseriaViva = service.getMiseryIndex();
+assert(miseriaViva.selo === 'exato' && miseriaViva.avisos.length === 0 && miseriaViva.insumos.every(i => i.status === 'confirmado'), 'Os dois ao vivo e do mesmo mês: selo exato');
+assertCloseTo(miseriaViva.valor, 4.58 + 5.2, 1e-9, 'Índice ao vivo = 4,58 + 5,2');
+assert(miseriaViva.periodos.desocupacao === 'jul–set/2026' && miseriaViva.periodos.inflacao === 'set/2026', 'Mostra os dois períodos (inflação em set/2026, desocupação em jul–set/2026)');
+assert(miseriaViva.serie.length === 2 && miseriaViva.serie[1].data === '09/2026', 'Histórico do índice vem do IPCA e da PNAD nos meses em comum');
+const descasado = service.state.with({ fontes: { ipca: { ...service.state.fontes.ipca, mes: '10/2026', periodo: 'out/2026' } } });
+const svcDescasado = new MacroObservatoryService({ initialState: descasado });
+const miseriaDescasada = svcDescasado.getMiseryIndex();
+assert(miseriaDescasada.selo === 'estimativa' && miseriaDescasada.avisos[0].startsWith('períodos diferentes'), 'Períodos diferentes: selo estimativa e aviso (T2)');
+const ruim = new MacroObservatoryService({ initialState: service.state.with({ desocupacao: NaN }) });
+let erroServico = false;
+try { ruim.getMiseryIndex(); } catch (e) { erroServico = e instanceof RangeError; }
+assert(erroServico, 'T3: desocupação NaN lança RangeError também pelo serviço');
+const fiscalSvc = refSvc.simulateFiscalModel();
+assert(Array.isArray(fiscalSvc.avisos) && typeof fiscalSvc.foraDoIntervalo === 'boolean', 'A simulação do serviço traz os avisos do modelo');
+assert(refSvc.getMacroDashboardMetrics().desocupacao === 5.2, 'Painel expõe a desocupação para o cartão');
+const relatorio = refSvc.generateConsolidatedReport({ fiscalData: fiscalSvc });
+assert(relatorio.includes('Primario que mantem a divida estavel') && relatorio.includes('Indice de miseria') && relatorio.includes('(estimativa)'), 'Relatório copiado traz o primário estabilizador e o índice de miséria com o selo');
+
+// 14. Gateway: desocupação da PNAD Contínua
+console.log('\n14. Teste do GovApiGateway (desocupação, IBGE SIDRA 6381)');
+assert(GovApiGateway.trimestreMovel('202609') === 'jul–set/2026' && GovApiGateway.trimestreMovel('202603') === 'jan–mar/2026', 'Trimestre móvel dentro do ano: jul–set/2026');
+assert(GovApiGateway.trimestreMovel('202601') === 'nov/2025–jan/2026' && GovApiGateway.trimestreMovel('202602') === 'dez/2025–fev/2026', 'Trimestre móvel que cruza o ano: nov/2025–jan/2026');
+globalThis.fetch = async url => ({ ok: true, status: 200, json: async () => [{ resultados: [{ series: [{ serie: { '202607': '5.3', '202608': '5.3', '202609': '5.2' } }] }] }] });
+const desoc = await new GovApiGateway().fetchDesocupacaoPnad();
+assert(desoc.value === 5.2 && desoc.date === 'jul–set/2026' && desoc.mes === '09/2026' && desoc.historico.length === 3, 'Último período, rótulo do trimestre e histórico mensal');
+globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => [{ resultados: [{ series: [{ serie: { '2026': '5.2' } }] }] }] });
+assert(await new GovApiGateway().fetchDesocupacaoPnad() === null, 'Resposta fora do formato (sem períodos aaaamm) vira null');
+globalThis.fetch = async () => ({ ok: false, status: 500, json: async () => ({}) });
+assert(await new GovApiGateway().fetchDesocupacaoPnad() === null, 'HTTP 500 vira null (segue o valor de referência)');
+assert(MacroObservatoryService.mes('01/09/2026') === '09/2026' && MacroObservatoryService.mes('2026') === null && MacroObservatoryService.mes('set/2025–ago/2026') === null, 'Mês de referência só sai de datas dd/mm/aaaa');
 
 console.log(`\n========================================`);
 console.log(`Total: ${passed + failed} | Passou: ${passed} | Falhou: ${failed}`);

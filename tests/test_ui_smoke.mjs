@@ -165,6 +165,30 @@ try {
   await abrir(`${base}#selic=99&aba=tabFiscal`);
   assert((await lerCenario()).selic !== '99', 'Link com Selic fora da faixa é ignorado');
 
+  console.log('\n4b. Cálculos novos: índice de miséria e primário estabilizador');
+  await tela(1400);
+  await cdp('Page.navigate', { url: 'about:blank' }); await esperar(300);
+  await abrir();
+  const miseria = JSON.parse(await avaliar(`JSON.stringify({valor: macroMiseria.textContent, selo: macroMiseriaSelo.textContent, periodos: macroMiseriaPeriodos.textContent, insumos: document.querySelectorAll('#macroMiseriaInsumos li').length, feed: feedValDesocupacao.textContent})`));
+  assert(/^\d+,\d{2}$/.test(miseria.valor), `Índice de miséria é um número com 2 casas (${miseria.valor})`);
+  assert(['Exato', 'Estimativa'].includes(miseria.selo), `Cartão do índice mostra o selo em texto (${miseria.selo})`);
+  assert(/IPCA 12 meses \(.+\) \+ desocupação \(.+\)/.test(miseria.periodos), `Cartão mostra os dois períodos (${miseria.periodos})`);
+  assert(miseria.insumos === 2 && /\d/.test(miseria.feed), `Índice lista os 2 insumos com a fonte e o feed da desocupação tem número (${miseria.insumos} · ${miseria.feed})`);
+  await avaliar('document.querySelector(".sidebar-nav-item[data-tab=tabFiscal]").click()'); await esperar(500);
+  const estab = JSON.parse(await avaliar(`JSON.stringify({valor: simEstabilizador.textContent, dif: simEstabilizadorDif.textContent, selo: simEstabilizadorSelo.textContent, insumos: document.querySelectorAll('#listaInsumosEstabilizador li').length, carga: fValTax.textContent, aviso: fAvisoModelo.hidden})`));
+  assert(/^-?\d+,\d{2}% do PIB$/.test(estab.valor) && /p\.p\./.test(estab.dif), `Simulador mostra o primário estabilizador e a diferença (${estab.valor} · ${estab.dif})`);
+  assert(estab.selo === 'Estimativa' && estab.insumos === 4, 'Primário estabilizador é estimativa e lista os 4 insumos com a fonte');
+  assert(estab.carga === '32,22%' && estab.aviso === true, 'Carga tributária padrão é 32,22% e o cenário normal não tem aviso do modelo');
+  await avaliar(`(() => { for (const [id, v] of [['fInputTax', 25], ['fInputSelic', 16], ['fInputIpca', 2], ['fInputGrowth', -2], ['fInputSpend', 6]]) { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } })()`); await esperar(400);
+  const extremo = JSON.parse(await avaliar(`JSON.stringify({aviso: fAvisoModelo.hidden, texto: fAvisoModelo.textContent, badge: fBadgeAno5.textContent})`));
+  assert(extremo.aviso === false && extremo.texto === 'Trajetória fora do intervalo do modelo', `Cenário extremo mostra o aviso do modelo (${extremo.badge})`);
+  for (const [largura, aba] of [[320, 'tabFiscal'], [320, 'tabAPIs']]) {
+    await tela(largura, true);
+    await avaliar(`document.querySelector('.bottom-nav-item[data-tab=${aba}]').click()`); await esperar(400);
+    assert(await avaliar('document.documentElement.scrollWidth <= innerWidth'), `Em ${largura} px a aba ${aba} não rola para o lado com os cartões novos`);
+  }
+  await tela(1400);
+
   console.log('\n5. Configurações');
   const reabrir = async (url = base) => { await cdp('Page.navigate', { url: 'about:blank' }); await esperar(300); await abrir(url); };
   const configAberta = () => avaliar('stkConfig.open');

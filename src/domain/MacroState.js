@@ -1,5 +1,5 @@
-import { DESPESAS_UNIAO_REFERENCIA } from './referencia/DespesasUniaoReferencia.js?v=20261119-1122';
-import { ORCAMENTO_UNIAO_REFERENCIA } from './referencia/OrcamentoUniaoReferencia.js?v=20261119-1122';
+import { DESPESAS_UNIAO_REFERENCIA } from './referencia/DespesasUniaoReferencia.js?v=20261119-1252';
+import { ORCAMENTO_UNIAO_REFERENCIA } from './referencia/OrcamentoUniaoReferencia.js?v=20261119-1252';
 
 /**
  * Camada de Domínio: Entidade MacroState
@@ -13,10 +13,11 @@ export class MacroState {
    * @param {number} params.eleitores Eleitorado apto (TSE, Eleições 2026, 1º turno, inclui exterior)
    * @param {number} params.pibBaseTri PIB nominal acumulado em 12 meses, em Trilhões BRL (BCB SGS 4382)
    * @param {number} params.pibReal Projeção de crescimento real do PIB % a.a. (SPE/Fazenda)
-   * @param {number} params.taxRatio Carga tributária bruta do governo geral (União, estados e municípios) % do PIB; usada só no simulador
+   * @param {number} params.taxRatio Carga tributária bruta do governo geral (União, estados e municípios) % do PIB; usada só no simulador (parâmetro carga_tributaria_bruta_gg: Tesouro Nacional, 2024)
    * @param {number} params.selic Taxa Selic % a.a. em uso (o simulador pode mudar)
    * @param {number} [params.selicOficial] Meta Selic vigente (Copom / BCB Série 432); referência dos juros pagos
    * @param {number} params.ipca Inflação acumulada 12m % a.a. (IPCA / BCB Série 13522)
+   * @param {number} [params.desocupacao] Taxa de desocupação % do trimestre móvel (IBGE SIDRA 6381, PNAD Contínua)
    * @param {number} params.dbgg Dívida Bruta do Governo Geral % do PIB (BCB Série 13762)
    * @param {number} params.dbggTri Dívida Bruta do Governo Geral em Trilhões BRL (BCB Série 13761)
    * @param {number} params.custoSelicPontoBi Sensibilidade de despesa da dívida por ponto de Selic (R$ Bi / pp)
@@ -33,10 +34,11 @@ export class MacroState {
     eleitores = 158745502,
     pibBaseTri = 13.40,
     pibReal = 2.00,
-    taxRatio = 34.20,
+    taxRatio = 32.22,
     selic = 13.75,
     selicOficial = selic,
     ipca = 4.58,
+    desocupacao = 5.2,
     dbgg = 82.87,
     dbggTri = 11.05,
     custoSelicPontoBi = 50.0,
@@ -59,6 +61,7 @@ export class MacroState {
     this.selic = Number(selic);
     this.selicOficial = Number(selicOficial);
     this.ipca = Number(ipca);
+    this.desocupacao = Number(desocupacao);
     this.dbgg = Number(dbgg);
     this.dbggTri = Number(dbggTri);
     this.custoSelicPontoBi = Number(custoSelicPontoBi);
@@ -96,6 +99,7 @@ export class MacroState {
       selic: changes.selic ?? this.selic,
       selicOficial: changes.selicOficial ?? this.selicOficial,
       ipca: changes.ipca ?? this.ipca,
+      desocupacao: changes.desocupacao ?? this.desocupacao,
       dbgg: changes.dbgg ?? this.dbgg,
       dbggTri: changes.dbggTri ?? this.dbggTri,
       custoSelicPontoBi: changes.custoSelicPontoBi ?? this.custoSelicPontoBi,
@@ -126,7 +130,9 @@ MacroState.BASES = Object.freeze({
 /** Períodos dos valores de referência padrão (BCB SGS, IBGE, TSE e Tesouro consultados em 28/10/2026) */
 MacroState.FONTES_REFERENCIA = Object.freeze({
   selic: Object.freeze({ periodo: 'out/2026', aoVivo: false }),
-  ipca: Object.freeze({ periodo: 'set/2026', aoVivo: false }),
+  ipca: Object.freeze({ periodo: 'set/2026', mes: '09/2026', aoVivo: false }),
+  // Trimestre móvel jul–set/2026 (IBGE SIDRA 6381, conferido pela Marly em 19/11/2026); mes = mês em que o trimestre termina
+  desocupacao: Object.freeze({ periodo: 'jul–set/2026', mes: '09/2026', aoVivo: false }),
   dbgg: Object.freeze({ periodo: 'ago/2026', aoVivo: false }),
   dbggTri: Object.freeze({ periodo: 'ago/2026', aoVivo: false }),
   pibBaseTri: Object.freeze({ periodo: 'set/2026', aoVivo: false }),

@@ -10,10 +10,14 @@ Desenvolvido por Celso de Almeida Leite (Systekna), outubro de 2026.
 |---|---|---|
 | Selic meta, IPCA 12 meses, dívida bruta (% do PIB e R$), PIB 12 meses | Banco Central, SGS: séries 432, 13522, 13762, 13761, 4382 | Ao vivo ao abrir a página (com histórico de 12 meses) |
 | População residente | IBGE, SIDRA tabela 6579 | Ao vivo |
+| Taxa de desocupação (PNAD Contínua, trimestre móvel) | IBGE, SIDRA tabela 6381, variável 4099 | Ao vivo (com histórico de 12 períodos) |
 | Eleitorado apto 2026 (158.745.502, 1º turno, com exterior) | TSE, Estatísticas do eleitorado | Valor fixo (o TSE não tem API) |
 | Gastos da União por função, 12 meses | Tesouro Nacional, SICONFI, RREO Anexo 02 (despesa liquidada) | Referência gerada por script |
 | Receita federal (impostos e contribuições) e juros pagos, 12 meses | Tesouro Nacional, SICONFI, RREO Anexo 01 | Referência gerada por script |
-| Carga tributária do país (34,2% do PIB), custo de ~R$ 50 Bi por ponto de Selic | Tesouro Nacional | Parâmetros do simulador |
+| Carga tributária bruta do governo geral (32,22% do PIB em 2024, sem FGTS e Sistema S) | Tesouro Nacional, Boletim CTB 2025 | Parâmetro `carga_tributaria_bruta_gg` |
+| Receita (19,25%) e despesa (19,40%) da União em % do PIB, custo de ~R$ 50 Bi por ponto de Selic, crescimento real do PIB (2,00%) | Premissas do modelo, **sem fonte confirmada** | Parâmetros marcados `estimativa` e `a-confirmar` |
+
+Os números fixos (parâmetros) vêm do módulo comum `vendor/stk-gov/stk-gov-parametros.js`, cópia de `../_design-system/parametros/`: cada um tem fonte, vigência, tipo (oficial ou estimativa) e status (confirmado ou a-confirmar). Não edite a cópia.
 
 A API do Tesouro não manda cabeçalho CORS, então o navegador não consegue consultá-la. Os dados do SICONFI vêm de `src/domain/referencia/*.js`, gerados com `npm run referencia` (o Node não tem CORS).
 
@@ -28,7 +32,9 @@ A engrenagem do topo abre o painel comum: tema (escuro, claro ou do sistema), ba
 - **Impostos e gastos são só da União**, dos dois lados: impostos e contribuições federais × despesa liquidada da União. Estados e municípios ficam de fora; a parte dos impostos federais repassada a eles aparece em "Transferências a estados e municípios".
 - **Juros** são os pagos pela União em 12 meses (R$ 509,5 Bi no período set/2025–ago/2026). O custo de ~R$ 50 Bi por ponto de Selic só entra na matriz "E se a Selic mudar?" e no simulador, somado aos juros pagos.
 - **Dívida bruta** é a do governo geral (União, estados e municípios), o indicador oficial do Banco Central.
-- **Simulador**: trajetória da dívida por Δd = d · (r − g)/(1 + g) − s, com juro real pela equação de Fisher. A rosca usa a composição real do gasto da União (Anexo 01), com os juros e o gasto primário ajustados pelo cenário. O imposto do simulador é a carga do país todo (34,2% do PIB), coerente com a dívida do governo geral.
+- **Simulador**: trajetória da dívida por Δd = d · (r − g)/(1 + g) − s, com juro real pela equação de Fisher. A rosca usa a composição real do gasto da União (Anexo 01), com os juros e o gasto primário ajustados pelo cenário. O imposto do simulador é a carga do país todo (32,22% do PIB, Tesouro), coerente com a dívida do governo geral. **Não há piso para a dívida** (antes, travava em 20% do PIB): se a trajetória sair do intervalo do modelo (0% a 200% do PIB), a tela avisa "trajetória fora do intervalo do modelo".
+- **Primário que mantém a dívida estável** (Simulador): s* = d · (r − g)/(1 + g), com a diferença para o primário do cenário. É **estimativa** (g e r são premissas de cenário) e lista os insumos com a fonte.
+- **Índice de miséria** (Painel da economia): IPCA em 12 meses + taxa de desocupação, com os dois períodos e o histórico. Fica **exato** quando os dois são do mesmo mês e vieram das fontes; com períodos diferentes ou valores de referência, aparece como **estimativa**.
 - **Link do cenário**: "Compartilhar → Copiar link deste cenário" gera `index.html#selic=11&base=eleitores&aba=tabFiscal`; quem abre vê os mesmos valores.
 
 ## Identidade visual
@@ -48,11 +54,12 @@ vendor/chart.js/           Chart.js 4.4.1
 vendor/fonts/              Inter e IBM Plex Mono
 src/
   Program.js               Composição: injeta dependências, liga shell, PWA e cenário do link
-  domain/                  MacroState, FisherModel, DebtTrajectoryModel, SensibilityMatrixModel,
+  domain/                  MacroState, FisherModel, DebtTrajectoryModel, DebtStabilizationModel, MiseryIndexModel,
+                           SensibilityMatrixModel,
                            PublicFinanceModel, UnionSpendingModel (Anexo 02), UnionBudgetModel (Anexo 01),
                            referencia/ (gerados por script)
   application/             MacroObservatoryService (casos de uso, relatório, CSV, salvar/restaurar)
-  infrastructure/          GovApiGateway (BCB, IBGE, SICONFI), LocalSnapshotStore, ChartAdapter, CsvExporter
+  infrastructure/          GovApiGateway (BCB, IBGE, SICONFI), ParametrosVendor (porta de parâmetros), LocalSnapshotStore, ChartAdapter, CsvExporter
   ui/                      ObservatoryView, CenarioUrl, SvgIcons
 scripts/
   build_referencia_uniao.mjs  Regera as referências do Tesouro (Anexos 01 e 02)

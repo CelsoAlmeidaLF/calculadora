@@ -1,5 +1,5 @@
-import { UnionSpendingModel } from '../domain/UnionSpendingModel.js?v=20261119-1122';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1122';
+import { UnionSpendingModel } from '../domain/UnionSpendingModel.js?v=20261119-1252';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1252';
 
 /**
  * Camada de Infraestrutura: GovApiGateway
@@ -168,6 +168,49 @@ export class GovApiGateway {
   }
 
   /**
+   * Taxa de desocupação da PNAD Contínua, trimestre móvel (IBGE SIDRA 6381, variável 4099), últimos 12 períodos.
+   * O código do período é o mês em que o trimestre termina (202609 = jul–set/2026).
+   * @returns {Promise<{value: number, date: string, mes: string, historico: Array<{data: string, valor: number}>, source: string}|null>}
+   *   date: rótulo do trimestre ('jul–set/2026'); mes: 'mm/aaaa' em que termina; historico: um ponto por período ('mm/aaaa')
+   */
+  async fetchDesocupacaoPnad() {
+    const url = 'https://servicodados.ibge.gov.br/api/v3/agregados/6381/periodos/-12/variaveis/4099?localidades=N1[all]';
+    this.log('Consultando IBGE SIDRA 6381 (taxa de desocupação, PNAD Contínua)...', 'info');
+    try {
+      const res = await this._fetchWithTimeout(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const serie = data?.[0]?.resultados?.[0]?.series?.[0]?.serie;
+      const periodos = Object.keys(serie || {}).filter(p => /^\d{6}$/.test(p) && !isNaN(parseFloat(serie[p]))).sort();
+      if (!periodos.length) throw new Error('Formato inesperado');
+      const historico = periodos.map(p => ({ data: `${p.slice(4)}/${p.slice(0, 4)}`, valor: parseFloat(serie[p]) }));
+      const ultimo = periodos[periodos.length - 1];
+      const valor = parseFloat(serie[ultimo]);
+      this.log(`IBGE SIDRA 6381 retornado: desocupação ${GovApiGateway.trimestreMovel(ultimo)} = ${valor.toFixed(1)}%`, 'info');
+      return { value: valor, date: GovApiGateway.trimestreMovel(ultimo), mes: historico[historico.length - 1].data, historico, source: 'IBGE SIDRA 6381' };
+    } catch (err) {
+      const motivo = err.name === 'AbortError' ? `sem resposta em ${this.timeoutMs / 1000} s` : err.message;
+      this.log(`IBGE SIDRA 6381 indisponível (${motivo}). Mantendo valor de referência.`, 'warn');
+      return null;
+    }
+  }
+
+  /**
+   * Rótulo do trimestre móvel a partir do código do período do SIDRA: '202609' → 'jul–set/2026'; '202601' → 'nov/2025–jan/2026'
+   * @param {string} periodo aaaamm do mês em que o trimestre termina
+   */
+  static trimestreMovel(periodo) {
+    const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const ano = Number(periodo.slice(0, 4));
+    const fim = Number(periodo.slice(4)) - 1;
+    const inicio = (fim + 10) % 12;
+    const anoInicio = fim >= 2 ? ano : ano - 1;
+    return anoInicio === ano
+      ? `${meses[inicio]}–${meses[fim]}/${ano}`
+      : `${meses[inicio]}/${anoInicio}–${meses[fim]}/${ano}`;
+  }
+
+  /**
    * Um anexo do RREO da União num bimestre (Tesouro Nacional, SICONFI)
    * @private
    * @param {string} anexo Ex.: 'RREO-Anexo 02'
@@ -250,13 +293,14 @@ export class GovApiGateway {
    */
   async syncAll() {
     this.log('Iniciando sincronização completa com os repositórios oficiais...', 'info');
-    const [selic, ipca, dbgg, dbggReais, pib, pop, despesas, orcamento] = await Promise.allSettled([
+    const [selic, ipca, dbgg, dbggReais, pib, pop, desocupacao, despesas, orcamento] = await Promise.allSettled([
       this.fetchSelicMeta(),
       this.fetchIpca12m(),
       this.fetchDividaBruta(),
       this.fetchDividaBrutaReais(),
       this.fetchPibNominal12m(),
       this.fetchPopulacaoIbge(),
+      this.fetchDesocupacaoPnad(),
       this.incluirTesouro ? this.fetchDespesasUniao() : null,
       this.incluirTesouro ? this.fetchOrcamentoUniao() : null
     ]);
@@ -269,6 +313,7 @@ export class GovApiGateway {
       dbggReais: valor(dbggReais),
       pib: valor(pib),
       populacao: valor(pop),
+      desocupacao: valor(desocupacao),
       despesas: valor(despesas),
       orcamento: valor(orcamento),
       ignorados: this.incluirTesouro ? [] : ['despesas', 'orcamento'],

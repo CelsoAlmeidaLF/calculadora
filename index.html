@@ -25,11 +25,11 @@
   <meta name="apple-mobile-web-app-title" content="Calculadora">
 
   <!-- Design system comum dos projetos 8.X (cópia de _design-system/, não editar aqui) + estilos do conteúdo -->
-  <script src="vendor/stk-gov/stk-gov-tema.js?v=20261119-1122" data-app="calculadora"></script>
-  <link rel="stylesheet" href="css/fonts.css?v=20261119-1122">
-  <link rel="stylesheet" href="vendor/stk-gov/stk-gov.css?v=20261119-1122">
-  <link rel="stylesheet" href="css/style.css?v=20261119-1122">
-  <link rel="stylesheet" href="css/analista.css?v=20261119-1122">
+  <script src="vendor/stk-gov/stk-gov-tema.js?v=20261119-1252" data-app="calculadora"></script>
+  <link rel="stylesheet" href="css/fonts.css?v=20261119-1252">
+  <link rel="stylesheet" href="vendor/stk-gov/stk-gov.css?v=20261119-1252">
+  <link rel="stylesheet" href="css/style.css?v=20261119-1252">
+  <link rel="stylesheet" href="css/analista.css?v=20261119-1252">
   
   <!-- Biblioteca Vendored Local-First para Gráficos -->
   <script src="vendor/chart.js/chart.umd.js"></script>
@@ -183,6 +183,20 @@
                 </div>
               </div>
 
+              <!-- Desocupação (PNAD Contínua) -->
+              <div class="feed-card">
+                <div class="feed-meta">
+                  <span class="feed-tag" title="IBGE SIDRA 6381, variável 4099">IBGE</span>
+                  <strong>Desocupação (PNAD)</strong>
+                  <span class="feed-status" id="syncStatusDesocupacao">Referência · jul–set/2026</span>
+                </div>
+                <div class="feed-value">
+                  <span class="num text-warn" id="feedValDesocupacao">5,2%</span>
+                  <span class="unit">trimestre móvel</span>
+                  <span class="feed-spark" data-spark="desocupacao" hidden></span>
+                </div>
+              </div>
+
               <!-- Dívida Bruta (DBGG): % do PIB e R$ -->
               <div class="feed-card">
                 <div class="feed-meta">
@@ -283,6 +297,20 @@
               <span class="kpi-label">Juros pagos pela União por <span data-base-label>habitante</span></span>
               <div class="kpi-value text-warn" id="macroDebtPerCapita">R$ 3.209</div>
               <span class="kpi-sub">por ano · <span id="macroJurosTotal">R$ 509,5 Bi</span> no total · cada ponto de Selic pesa cerca de R$ 50 Bi</span>
+            </div>
+
+            <div class="macro-kpi-card" id="cardMiseria">
+              <span class="kpi-label">Índice de miséria</span>
+              <div class="kpi-value text-warn" id="macroMiseria">9,78</div>
+              <span class="kpi-sub" id="macroMiseriaPeriodos">IPCA 12 meses + desocupação</span>
+              <span class="feed-spark" id="macroMiseriaSpark" hidden></span>
+              <span class="selo-linha"><span class="badge-status badge-alerta" id="macroMiseriaSelo">Estimativa</span></span>
+              <p class="nota-aviso" id="macroMiseriaAviso" role="status" hidden></p>
+              <details class="nota-metodo">
+                <summary>Como foi calculado</summary>
+                <p>Índice de Okun: inflação dos últimos 12 meses (IPCA) mais a taxa de desocupação da PNAD Contínua. Quanto maior, pior. Os dois números precisam ser do mesmo mês de referência; quando não são, o índice aparece como estimativa.</p>
+                <ul class="lista-insumos" id="macroMiseriaInsumos"></ul>
+              </details>
             </div>
 
             <div class="macro-kpi-card">
@@ -431,12 +459,12 @@
               <div class="control-group">
                 <div class="control-header">
                   <span class="control-label">Impostos de todo o país (% do PIB):</span>
-                  <span class="control-val text-accent" id="fValTax">34,20%</span>
+                  <span class="control-val text-accent" id="fValTax">32,22%</span>
                 </div>
-                <input type="range" id="fInputTax" min="25.0" max="42.0" step="0.1" value="34.20" aria-label="Carga Tributária Bruta">
+                <input type="range" id="fInputTax" min="25.0" max="42.0" step="0.01" value="32.22" aria-label="Carga Tributária Bruta">
                 <div class="control-scale">
                   <span>25,0%</span>
-                  <span>34,2% (atual)</span>
+                  <span>32,22% (Tesouro, 2024)</span>
                   <span>42,0%</span>
                 </div>
               </div>
@@ -518,7 +546,18 @@
                     <div class="kpi-value text-down" id="simDividaAno5">R$ 0</div>
                     <span class="kpi-sub" id="simDividaAno5Total">R$ 0 Tri</span>
                   </div>
+                  <div class="macro-kpi-card" id="cardEstabilizador">
+                    <span class="kpi-label">Primário que mantém a dívida estável</span>
+                    <div class="kpi-value" id="simEstabilizador">0% do PIB</div>
+                    <span class="kpi-sub" id="simEstabilizadorDif">Sem cálculo</span>
+                    <span class="selo-linha"><span class="badge-status badge-alerta" id="simEstabilizadorSelo">Estimativa</span></span>
+                  </div>
                 </div>
+                <details class="nota-metodo" id="notaEstabilizador">
+                  <summary>Como foi calculado o primário estabilizador</summary>
+                  <p>s* = d · (r − g) / (1 + g): a dívida (d) fica parada quando o resultado primário do governo é s*. O juro real (r) vem da equação de Fisher, com a Selic e o IPCA do cenário; g é o crescimento real do PIB. A conta usa a Selic como custo de toda a dívida bruta, simplificação que a trajetória ao lado também faz.</p>
+                  <ul class="lista-insumos" id="listaInsumosEstabilizador"></ul>
+                </details>
               </div>
 
               <!-- Gráfico 1: Trajetória da Dívida -->
@@ -533,6 +572,7 @@
                   </div>
                   <span class="panel-header-badge text-gold" id="fBadgeAno5">Ano 5: 93,0% PIB</span>
                 </div>
+                <p class="nota-aviso" id="fAvisoModelo" role="status" hidden></p>
                 <div class="chart-container">
                   <canvas id="chartDebtTraj"></canvas>
                 </div>
@@ -581,7 +621,9 @@
               </li>
               <li>
                 <a href="https://sidra.ibge.gov.br/tabela/6579" target="_blank" rel="noopener noreferrer">IBGE, SIDRA tabela 6579</a>:
-                estimativa da população residente.
+                estimativa da população residente;
+                <a href="https://sidra.ibge.gov.br/tabela/6381" target="_blank" rel="noopener noreferrer">tabela 6381</a>:
+                taxa de desocupação da PNAD Contínua (trimestre móvel).
                 <a href="https://servicodados.ibge.gov.br/api/docs/agregados?versao=3" target="_blank" rel="noopener noreferrer">API de agregados</a>.
               </li>
               <li>
@@ -600,7 +642,7 @@
             <ul>
               <li>
                 <a href="https://www.tesourotransparente.gov.br/" target="_blank" rel="noopener noreferrer">Tesouro Transparente</a>:
-                carga tributária bruta do país (<span class="font-mono">34,2%</span> do PIB) e custo da dívida por ponto de Selic (<span class="font-mono">~R$ 50 Bi</span>), usados no simulador.
+                carga tributária bruta do governo geral (<span class="font-mono">32,22%</span> do PIB em 2024, <a href="https://cdn.tesouro.gov.br/sistemas-internos/apex/producao/sistemas/thot/arquivos/publicacoes/54334_1699660/Boletim_CTB_2025.pdf" target="_blank" rel="noopener noreferrer">Boletim CTB 2025</a>) e custo da dívida por ponto de Selic (<span class="font-mono">~R$ 50 Bi</span>, ainda sem fonte confirmada), usados no simulador. Cada número tem fonte, data e situação em <span class="font-mono">vendor/stk-gov/stk-gov-parametros.json</span>.
               </li>
               <li>
                 <a href="https://www.gov.br/fazenda/pt-br/orgaos/spe" target="_blank" rel="noopener noreferrer">Secretaria de Política Econômica (Fazenda)</a>:
@@ -643,6 +685,6 @@
   </div>
 
   <!-- ENTRYPOINT DA APLICAÇÃO (ES6 MODULE) -->
-  <script type="module" src="src/Program.js?v=20261119-1122"></script>
+  <script type="module" src="src/Program.js?v=20261119-1252"></script>
 </body>
 </html>

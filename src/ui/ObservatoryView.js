@@ -1,5 +1,5 @@
-import { renderIcons } from './SvgIcons.js?v=20261119-1315';
-import { CenarioUrl } from './CenarioUrl.js?v=20261119-1315';
+import { renderIcons } from './SvgIcons.js?v=20261119-1317';
+import { CenarioUrl } from './CenarioUrl.js?v=20261119-1317';
 
 /** Número no padrão brasileiro com casas fixas: fmt(13.4, 2) → "13,40" */
 const fmt = (v, casas) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -13,8 +13,8 @@ const brl = v => `${v < 0 ? '-' : ''}R$ ${Math.abs(Math.round(v)).toLocaleString
 export class ObservatoryView {
   /**
    * @param {Object} params
-   * @param {import('../application/MacroObservatoryService.js?v=20261119-1315').MacroObservatoryService} params.service
-   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1315').ChartAdapter} params.chartAdapter
+   * @param {import('../application/MacroObservatoryService.js?v=20261119-1317').MacroObservatoryService} params.service
+   * @param {import('../infrastructure/ChartAdapter.js?v=20261119-1317').ChartAdapter} params.chartAdapter
    */
   constructor({ service, chartAdapter }) {
     this.service = service;
@@ -320,20 +320,20 @@ export class ObservatoryView {
     document.querySelectorAll('[data-bind="pessoas"]').forEach(el => { el.textContent = base.pessoas.toLocaleString('pt-BR'); });
 
     // 1. Atualizar Feeds Oficiais no topo
-    if (this.feedValSelic) this.feedValSelic.textContent = `${m.selic.toFixed(2).replace('.', ',')}%`;
-    if (this.feedValIpca) this.feedValIpca.textContent = `${m.ipca.toFixed(2).replace('.', ',')}%`;
-    if (this.feedValDbgg) this.feedValDbgg.textContent = `${m.dbgg.toFixed(2).replace('.', ',')}%`;
+    if (this.feedValSelic) this.feedValSelic.textContent = `${m.oficiais.selic.toFixed(2).replace('.', ',')}%`;
+    if (this.feedValIpca) this.feedValIpca.textContent = `${m.oficiais.ipca.toFixed(2).replace('.', ',')}%`;
+    if (this.feedValDbgg) this.feedValDbgg.textContent = `${m.oficiais.dbgg.toFixed(2).replace('.', ',')}%`;
     if (this.feedValPop) this.feedValPop.textContent = `${(m.populacao / 1e6).toFixed(2).replace('.', ',')}M`;
     if (this.lblLastSyncTime) this.lblLastSyncTime.textContent = m.lastSync || 'ainda não';
     const status = f => `${f.aoVivo ? 'Atualizado' : (f.salvo ? 'Salvo' : 'Referência')} · ${f.periodo}`;
     if (this.syncStatusSelic) this.syncStatusSelic.textContent = status(m.fontes.selic);
     if (this.syncStatusIpca) this.syncStatusIpca.textContent = status(m.fontes.ipca);
-    if (this.feedValDesocupacao) this.feedValDesocupacao.textContent = `${fmt(m.desocupacao, 1)}%`;
+    if (this.feedValDesocupacao) this.feedValDesocupacao.textContent = `${fmt(m.oficiais.desocupacao, 1)}%`;
     if (this.syncStatusDesocupacao) this.syncStatusDesocupacao.textContent = status(m.fontes.desocupacao);
     if (this.syncStatusDbgg) this.syncStatusDbgg.textContent = status(m.fontes.dbgg);
     if (this.syncStatusPop) this.syncStatusPop.textContent = status(m.fontes.populacao);
     if (this.feedValDbggTri) this.feedValDbggTri.textContent = `R$ ${fmt(m.dbggTri, 2)}`;
-    if (this.feedValPib) this.feedValPib.textContent = `R$ ${fmt(m.pibNominalTri, 2)}`;
+    if (this.feedValPib) this.feedValPib.textContent = `R$ ${fmt(m.oficiais.pibBaseTri, 2)}`;
     if (this.syncStatusPib) this.syncStatusPib.textContent = status(m.fontes.pibBaseTri);
     if (this.feedValEleitores) this.feedValEleitores.textContent = `${fmt(m.eleitores / 1e6, 2)}M`;
     if (this.feedValGastos) this.feedValGastos.textContent = `R$ ${fmt(perfil.gastosTotal.bi / 1000, 2)}`;

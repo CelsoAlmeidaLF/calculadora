@@ -1,13 +1,13 @@
-import { MacroState } from '../domain/MacroState.js?v=20261119-1315';
-import { FisherModel } from '../domain/FisherModel.js?v=20261119-1315';
-import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1315';
-import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1315';
-import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1315';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1315';
-import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1315';
-import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1315';
-import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1315';
-import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1315';
+import { MacroState } from '../domain/MacroState.js?v=20261119-1317';
+import { FisherModel } from '../domain/FisherModel.js?v=20261119-1317';
+import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1317';
+import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1317';
+import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1317';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1317';
+import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1317';
+import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1317';
+import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1317';
+import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1317';
 
 /**
  * Camada de Aplicação: MacroObservatoryService
@@ -16,10 +16,10 @@ import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1315';
 export class MacroObservatoryService {
   /**
    * @param {Object} dependencies
-   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1315').GovApiGateway} dependencies.apiGateway
+   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1317').GovApiGateway} dependencies.apiGateway
    * @param {MacroState} [dependencies.initialState]
-   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1315').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
-   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1315').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
+   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1317').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
+   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1317').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
    */
   constructor({ apiGateway, initialState = null, cache = null, parametros = new ParametrosVendor() } = {}) {
     this.apiGateway = apiGateway;
@@ -285,6 +285,7 @@ export class MacroObservatoryService {
     const jurosPerCapita = (custoJurosBi * 1e9) / s.populacao;
 
     return {
+      oficiais: { ...this.oficial }, // painel de dados oficiais: nunca o valor dos sliders
       pibNominalTri: s.pibBaseTri,
       pibReal: s.pibReal,
       taxRatio: s.taxRatio,
@@ -498,4 +499,4 @@ MacroObservatoryService.FEEDS = Object.freeze([
 ]);
 
 /** Indicadores com valor oficial guardado à parte do cenário */
-MacroObservatoryService.CHAVES_OFICIAIS = Object.freeze(['ipca', 'selic', 'dbgg', 'desocupacao']);
+MacroObservatoryService.CHAVES_OFICIAIS = Object.freeze(['ipca', 'selic', 'dbgg', 'desocupacao', 'pibBaseTri']);

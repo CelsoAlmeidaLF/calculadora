@@ -393,6 +393,12 @@ salvoBug.restaurarSalvo();
 salvoBug.updateFiscalParams({ ipca: 9 });
 assertCloseTo(salvoBug.getMiseryIndex().valor, 4.58 + 5.2, 1e-9, 'Também ao reabrir com dados salvos, o slider não mexe no índice');
 
+const oficialAntes = svcBug.getMacroDashboardMetrics().oficiais;
+svcBug.updateFiscalParams({ ipca: 9, selic: 8, pibBaseTri: 11 });
+const mSlider = svcBug.getMacroDashboardMetrics();
+assert(mSlider.oficiais.ipca === 4.63 && mSlider.oficiais.selic === 13.75 && mSlider.oficiais.pibBaseTri === oficialAntes.pibBaseTri && mSlider.ipca === 9, 'Painel oficial (IPCA, Selic, PIB) não muda quando o slider muda; o cenário muda');
+assert(mSlider.oficiais.dbgg === oficialAntes.dbgg && mSlider.oficiais.desocupacao === 5.2, 'Dívida e desocupação oficiais também ficam como estavam');
+
 // 14. Gateway: desocupação da PNAD Contínua
 console.log('\n14. Teste do GovApiGateway (desocupação, IBGE SIDRA 6381)');
 assert(GovApiGateway.trimestreMovel('202609') === 'jul–set/2026' && GovApiGateway.trimestreMovel('202603') === 'jan–mar/2026', 'Trimestre móvel dentro do ano: jul–set/2026');

@@ -1,13 +1,13 @@
-import { MacroState } from '../domain/MacroState.js?v=20261119-1317';
-import { FisherModel } from '../domain/FisherModel.js?v=20261119-1317';
-import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1317';
-import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1317';
-import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1317';
-import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1317';
-import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1317';
-import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1317';
-import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1317';
-import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1317';
+import { MacroState } from '../domain/MacroState.js?v=20261119-1320';
+import { FisherModel } from '../domain/FisherModel.js?v=20261119-1320';
+import { DebtTrajectoryModel } from '../domain/DebtTrajectoryModel.js?v=20261119-1320';
+import { SensibilityMatrixModel } from '../domain/SensibilityMatrixModel.js?v=20261119-1320';
+import { PublicFinanceModel } from '../domain/PublicFinanceModel.js?v=20261119-1320';
+import { UnionBudgetModel } from '../domain/UnionBudgetModel.js?v=20261119-1320';
+import { DebtStabilizationModel } from '../domain/DebtStabilizationModel.js?v=20261119-1320';
+import { MiseryIndexModel } from '../domain/MiseryIndexModel.js?v=20261119-1320';
+import { ParametrosVendor } from '../infrastructure/ParametrosVendor.js?v=20261119-1320';
+import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1320';
 
 /**
  * Camada de Aplicação: MacroObservatoryService
@@ -16,10 +16,10 @@ import { CsvExporter } from '../infrastructure/CsvExporter.js?v=20261119-1317';
 export class MacroObservatoryService {
   /**
    * @param {Object} dependencies
-   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1317').GovApiGateway} dependencies.apiGateway
+   * @param {import('../infrastructure/GovApiGateway.js?v=20261119-1320').GovApiGateway} dependencies.apiGateway
    * @param {MacroState} [dependencies.initialState]
-   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1317').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
-   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1317').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
+   * @param {import('../infrastructure/LocalSnapshotStore.js?v=20261119-1320').LocalSnapshotStore} [dependencies.cache] Última consulta salva no aparelho
+   * @param {import('../infrastructure/ParametrosVendor.js?v=20261119-1320').ParametrosVendor} [dependencies.parametros] ParametrosPort (módulo comum de parâmetros, ADR-001)
    */
   constructor({ apiGateway, initialState = null, cache = null, parametros = new ParametrosVendor() } = {}) {
     this.apiGateway = apiGateway;
@@ -241,9 +241,10 @@ export class MacroObservatoryService {
    */
   getPublicFinanceProfile() {
     const s = this.state;
+    // Seção "calculados a partir dos dados oficiais": só o valor oficial, nunca o dos sliders
     return PublicFinanceModel.profile({
-      pibBaseTri: s.pibBaseTri,
-      dbgg: s.dbgg,
+      pibBaseTri: this.oficial.pibBaseTri,
+      dbgg: this.oficial.dbgg,
       dbggTri: s.dbggTri,
       populacao: s.populacao,
       eleitores: s.eleitores,
@@ -275,10 +276,11 @@ export class MacroObservatoryService {
    */
   getMacroDashboardMetrics() {
     const s = this.state;
-    const pibNominalBi = s.pibBaseTri * 1000;
+    const pibNominalBi = this.oficial.pibBaseTri * 1000;
     const orcamento = UnionBudgetModel.resumo(s.orcamento);
     const arrecadacaoBi = orcamento.receitaBi;
-    const juroReal = FisherModel.calculateRealRate(s.selic, s.ipca);
+    const juroReal = FisherModel.calculateRealRate(this.oficial.selic, this.oficial.ipca); // oficial; o do cenário está em juroRealCenario
+    const juroRealCenario = FisherModel.calculateRealRate(s.selic, s.ipca);
     const custoJurosBi = orcamento.jurosBi;
 
     const impostoPerCapita = (arrecadacaoBi * 1e9) / s.populacao;
@@ -286,7 +288,7 @@ export class MacroObservatoryService {
 
     return {
       oficiais: { ...this.oficial }, // painel de dados oficiais: nunca o valor dos sliders
-      pibNominalTri: s.pibBaseTri,
+      pibNominalTri: this.oficial.pibBaseTri,
       pibReal: s.pibReal,
       taxRatio: s.taxRatio,
       arrecadacaoBi,
@@ -295,6 +297,7 @@ export class MacroObservatoryService {
       ipca: s.ipca,
       desocupacao: s.desocupacao,
       juroReal: Number(juroReal.toFixed(2)),
+      juroRealCenario: Number(juroRealCenario.toFixed(2)),
       custoJurosBi: Number(custoJurosBi.toFixed(1)),
       impostoPerCapita: Math.round(impostoPerCapita),
       jurosPerCapita: Math.round(jurosPerCapita),
@@ -418,15 +421,19 @@ FONTES OFICIAIS SINCRONIZADAS:
 * Banco Central do Brasil (SGS 432 / 13522 / 13762 / 13761 / 4382), IBGE (SIDRA 6579), TSE (eleitorado 2026)
   & Tesouro Nacional (SICONFI, RREO Anexos 01 e 02 da Uniao: receita realizada e despesa liquidada)
 * Origem: ${Object.keys(s.fontes).map(k => `${k} ${s.fontes[k].aoVivo ? 'ao vivo' : 'referencia'} (${s.fontes[k].periodo})`).join(' | ')}
-* PIB Nominal Base: R$ ${s.pibBaseTri.toFixed(2).replace('.', ',')} Tri (${s.pibReal > 0 ? '+' : ''}${s.pibReal.toFixed(2).replace('.', ',')}% real a.a.)
-* Taxa Meta Selic: ${s.selic.toFixed(2).replace('.', ',')}% a.a. | Inflacao IPCA: ${s.ipca.toFixed(2).replace('.', ',')}% a.a.
-* Juro Real Implicito (Equacao de Fisher): ${m.juroReal.toFixed(2).replace('.', ',')}% a.a.
-* Carga Tributaria Bruta (Uniao, estados e municipios): ${s.taxRatio.toFixed(2).replace('.', ',')}% do PIB
+* PIB Nominal 12 meses (oficial): R$ ${this.oficial.pibBaseTri.toFixed(2).replace('.', ',')} Tri
+* Taxa Meta Selic (oficial): ${this.oficial.selic.toFixed(2).replace('.', ',')}% a.a. | Inflacao IPCA (oficial): ${this.oficial.ipca.toFixed(2).replace('.', ',')}% a.a.
+* Juro Real Implicito (Equacao de Fisher, oficial): ${m.juroReal.toFixed(2).replace('.', ',')}% a.a.
 * Impostos e contribuicoes federais (Uniao, 12 meses): R$ ${(m.arrecadacaoBi / 1000).toFixed(2).replace('.', ',')} Tri = ${m.receitaPctPib.toFixed(1).replace('.', ',')}% do PIB
-* Divida Bruta DBGG (Atual): ${s.dbgg.toFixed(2).replace('.', ',')}% do PIB = R$ ${s.dbggTri.toFixed(2).replace('.', ',')} Tri
-* Projecao da Divida (Ano 5): ${fiscalData ? fiscalData.debtYear5.toFixed(1).replace('.', ',') : '-'}% do PIB
-* Primario que mantem a divida estavel: ${estab.valor.primarioPct.toFixed(2).replace('.', ',')}% do PIB (${seloTexto(estab)})
+* Divida Bruta DBGG (oficial): ${this.oficial.dbgg.toFixed(2).replace('.', ',')}% do PIB = R$ ${s.dbggTri.toFixed(2).replace('.', ',')} Tri
 * Indice de miseria (IPCA 12 meses ${miseria.periodos.inflacao} + desocupacao ${miseria.periodos.desocupacao}): ${miseria.valor.toFixed(2).replace('.', ',')} (${seloTexto(miseria)})
+
+CENARIO DO SIMULADOR (valores dos controles, nao sao dados oficiais):
+* Cenario do simulador: PIB Nominal R$ ${s.pibBaseTri.toFixed(2).replace('.', ',')} Tri, crescimento real ${s.pibReal > 0 ? '+' : ''}${s.pibReal.toFixed(2).replace('.', ',')}% a.a.
+* Cenario do simulador: Selic ${s.selic.toFixed(2).replace('.', ',')}% a.a., IPCA ${s.ipca.toFixed(2).replace('.', ',')}% a.a., juro real ${m.juroRealCenario.toFixed(2).replace('.', ',')}% a.a.
+* Cenario do simulador: Carga Tributaria Bruta (Uniao, estados e municipios) ${s.taxRatio.toFixed(2).replace('.', ',')}% do PIB
+* Cenario do simulador: Projecao da Divida (Ano 5) ${fiscalData ? fiscalData.debtYear5.toFixed(1).replace('.', ',') : '-'}% do PIB
+* Cenario do simulador: Primario que mantem a divida estavel: ${estab.valor.primarioPct.toFixed(2).replace('.', ',')}% do PIB (${seloTexto(estab)})
 
 PERFIL FISCAL PER CAPITA (Populacao: ${s.populacao.toLocaleString('pt-BR')} hab):
 * Impostos federais por Habitante: R$ ${m.impostoPerCapita.toLocaleString('pt-BR')} / ano
@@ -452,6 +459,13 @@ Gerado pelo Observatorio Macroeconomico Autonomo (Systekna / STK-GOVERNO-BRAZIL)
    * Dispara exportação CSV
    */
   exportCsv({ fiscalData } = {}) {
+    CsvExporter.export(this.csvData({ fiscalData }));
+  }
+
+  /**
+   * Dados da planilha: indicadores oficiais com o valor oficial; o que vem dos sliders vai em linhas "Cenario_*"
+   */
+  csvData({ fiscalData } = {}) {
     const s = this.state;
     const m = this.getMacroDashboardMetrics();
 
@@ -465,23 +479,24 @@ Gerado pelo Observatorio Macroeconomico Autonomo (Systekna / STK-GOVERNO-BRAZIL)
       ];
     });
 
-    CsvExporter.export({
+    return {
       populacao: s.populacao,
       eleitores: s.eleitores,
       dbggTri: s.dbggTri,
       extraRows: porPessoa,
-      pibBaseTri: s.pibBaseTri,
-      pibReal: s.pibReal,
-      taxRatio: s.taxRatio,
-      selic: s.selic,
-      ipca: s.ipca,
-      dbgg: s.dbgg,
+      pibBaseTri: this.oficial.pibBaseTri,
+      selic: this.oficial.selic,
+      ipca: this.oficial.ipca,
+      dbgg: this.oficial.dbgg,
       juroReal: m.juroReal,
       custoJurosBi: m.custoJurosBi,
       impostoPerCapita: m.impostoPerCapita,
       jurosPerCapita: m.jurosPerCapita,
-      debtYear5: fiscalData ? fiscalData.debtYear5 : s.dbgg
-    });
+      cenario: {
+        pibBaseTri: s.pibBaseTri, pibReal: s.pibReal, taxRatio: s.taxRatio, selic: s.selic, ipca: s.ipca,
+        spendVariation: s.spendVariation, juroReal: m.juroRealCenario, debtYear5: fiscalData ? fiscalData.debtYear5 : s.dbgg
+      }
+    };
   }
 }
 

@@ -1,15 +1,15 @@
-import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261119-1317';
-import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261119-1317';
-import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261119-1317';
-import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261119-1317';
-import { PreferenciasStore } from './infrastructure/PreferenciasStore.js?v=20261119-1317';
-import { ObservatoryView } from './ui/ObservatoryView.js?v=20261119-1317';
-import { CenarioUrl } from './ui/CenarioUrl.js?v=20261119-1317';
-import { secaoCalculos } from './ui/PreferenciasPainel.js?v=20261119-1317';
-import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261119-1317';
-import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261119-1317';
-import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261119-1317';
-import { StkGovConfig } from '../vendor/stk-gov/stk-gov-config.js?v=20261119-1317';
+import { GovApiGateway } from './infrastructure/GovApiGateway.js?v=20261119-1320';
+import { ChartAdapter } from './infrastructure/ChartAdapter.js?v=20261119-1320';
+import { MacroObservatoryService } from './application/MacroObservatoryService.js?v=20261119-1320';
+import { LocalSnapshotStore } from './infrastructure/LocalSnapshotStore.js?v=20261119-1320';
+import { PreferenciasStore } from './infrastructure/PreferenciasStore.js?v=20261119-1320';
+import { ObservatoryView } from './ui/ObservatoryView.js?v=20261119-1320';
+import { CenarioUrl } from './ui/CenarioUrl.js?v=20261119-1320';
+import { secaoCalculos } from './ui/PreferenciasPainel.js?v=20261119-1320';
+import { SvgIcons, renderIcons } from './ui/SvgIcons.js?v=20261119-1320';
+import { StkGovPwa } from '../vendor/stk-gov/stk-gov-pwa.js?v=20261119-1320';
+import { StkGovShell, renderStkIcons } from '../vendor/stk-gov/stk-gov-shell.js?v=20261119-1320';
+import { StkGovConfig } from '../vendor/stk-gov/stk-gov-config.js?v=20261119-1320';
 
 /**
  * Composition Root da Aplicação

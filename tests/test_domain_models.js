@@ -4,6 +4,7 @@ import { SensibilityMatrixModel } from '../src/domain/SensibilityMatrixModel.js'
 import { DebtStabilizationModel } from '../src/domain/DebtStabilizationModel.js';
 import { MiseryIndexModel } from '../src/domain/MiseryIndexModel.js';
 import { ParametrosVendor } from '../src/infrastructure/ParametrosVendor.js';
+import { CsvExporter } from '../src/infrastructure/CsvExporter.js';
 import { MacroState } from '../src/domain/MacroState.js';
 import { PublicFinanceModel } from '../src/domain/PublicFinanceModel.js';
 import { UnionSpendingModel } from '../src/domain/UnionSpendingModel.js';
@@ -398,6 +399,23 @@ svcBug.updateFiscalParams({ ipca: 9, selic: 8, pibBaseTri: 11 });
 const mSlider = svcBug.getMacroDashboardMetrics();
 assert(mSlider.oficiais.ipca === 4.63 && mSlider.oficiais.selic === 13.75 && mSlider.oficiais.pibBaseTri === oficialAntes.pibBaseTri && mSlider.ipca === 9, 'Painel oficial (IPCA, Selic, PIB) não muda quando o slider muda; o cenário muda');
 assert(mSlider.oficiais.dbgg === oficialAntes.dbgg && mSlider.oficiais.desocupacao === 5.2, 'Dívida e desocupação oficiais também ficam como estavam');
+
+// Cartões calculados a partir dos dados oficiais não seguem os sliders; relatório e CSV separam o cenário
+const calcAntes = new MacroObservatoryService({ apiGateway: gwBug });
+await calcAntes.syncOfficialFeeds();
+const cartoes = () => { const m = calcAntes.getMacroDashboardMetrics(); const p = calcAntes.getPublicFinanceProfile(); return JSON.stringify([m.juroReal, m.receitaPctPib, m.impostoPerCapita, m.jurosPerCapita, p.divida, p.imposto, p.juros]); };
+const cartoesAntes = cartoes();
+calcAntes.updateFiscalParams({ selic: 8, ipca: 9, pibBaseTri: 11, spendVariation: 3 });
+assert(cartoes() === cartoesAntes, 'Slider de Selic, IPCA, PIB e gastos não muda nenhum cartão "calculado a partir dos dados oficiais"');
+assertCloseTo(calcAntes.getMacroDashboardMetrics().juroReal, FisherModel.calculateRealRate(13.75, 4.63), 0.005, 'Juro real do cartão usa a Selic e o IPCA oficiais (13,75 e 4,63)');
+assertCloseTo(calcAntes.getMacroDashboardMetrics().juroRealCenario, FisherModel.calculateRealRate(8, 9), 0.005, 'O juro real do cenário existe à parte');
+const linhasCsv = CsvExporter.linhas(calcAntes.csvData({ fiscalData: calcAntes.simulateFiscalModel() }));
+const csvPor = Object.fromEntries(linhasCsv.map(l => [l[0], l]));
+assert(csvPor.Taxa_Meta_Selic[1] === 13.75 && csvPor.IPCA_Acumulado_12M[1] === 4.63 && csvPor.PIB_Nominal_Base[1] === calcAntes.oficial.pibBaseTri, 'CSV: indicadores oficiais com o valor oficial');
+assert(csvPor.Cenario_Taxa_Selic[1] === 8 && csvPor.Cenario_IPCA[1] === 9 && csvPor.Cenario_PIB_Nominal[1] === 11, 'CSV: valores dos sliders só nas linhas Cenario_*');
+assert(linhasCsv.filter(l => l[0].startsWith('Cenario_')).every(l => l[3].startsWith('Cenario do simulador')) && !linhasCsv.some(l => /^(Crescimento_Real_PIB|Carga_Tributaria_Bruta_Governo_Geral|Divida_Projetada_Ano_5)$/.test(l[0])), 'CSV: toda linha de cenário marca a origem e as antigas sem rótulo saíram');
+const textoRel = calcAntes.generateConsolidatedReport({ fiscalData: calcAntes.simulateFiscalModel() });
+assert(textoRel.includes('Taxa Meta Selic (oficial): 13,75%') && textoRel.includes('Cenario do simulador: Selic 8,00% a.a., IPCA 9,00% a.a.') && textoRel.includes('Cenario do simulador: Projecao da Divida'), 'Relatório: oficial e cenário em blocos separados, com o cenário rotulado');
 
 // 14. Gateway: desocupação da PNAD Contínua
 console.log('\n14. Teste do GovApiGateway (desocupação, IBGE SIDRA 6381)');

@@ -182,7 +182,8 @@ try {
   await avaliar(`(() => { for (const [id, v] of [['fInputTax', 25], ['fInputSelic', 16], ['fInputIpca', 2], ['fInputGrowth', -2], ['fInputSpend', 6]]) { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } })()`); await esperar(400);
   const extremo = JSON.parse(await avaliar(`JSON.stringify({aviso: fAvisoModelo.hidden, texto: fAvisoModelo.textContent, badge: fBadgeAno5.textContent})`));
   assert(extremo.aviso === false && extremo.texto === 'Trajetória fora do intervalo do modelo', `Cenário extremo mostra o aviso do modelo (${extremo.badge})`);
-  const oficiaisTela = JSON.parse(await avaliar('JSON.stringify([feedValSelic.textContent, feedValIpca.textContent])'));
+  const oficiaisTela = JSON.parse(await avaliar('JSON.stringify([feedValSelic.textContent, feedValIpca.textContent, macroJuroReal.textContent])'));
+  assert(!oficiaisTela[2].startsWith('-') && oficiaisTela[2] !== '13,73% a.a.', `O cartão Juro real não segue os sliders (${oficiaisTela[2]})`);
   assert(oficiaisTela[0] !== '16,00%' && oficiaisTela[1] !== '2,00%', `Mexer nos sliders não muda os cartões de dados oficiais (${oficiaisTela.join(' · ')})`);
   for (const [largura, aba] of [[320, 'tabFiscal'], [320, 'tabAPIs']]) {
     await tela(largura, true);

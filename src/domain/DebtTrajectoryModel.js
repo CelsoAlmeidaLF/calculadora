@@ -1,5 +1,5 @@
-import { FisherModel } from './FisherModel.js?v=20261119-1317';
-import { UnionBudgetModel } from './UnionBudgetModel.js?v=20261119-1317';
+import { FisherModel } from './FisherModel.js?v=20261119-1320';
+import { UnionBudgetModel } from './UnionBudgetModel.js?v=20261119-1320';
 
 /**
  * Camada de Domínio: Modelo de Sustentabilidade e Trajetória da Dívida Pública (Tesouro / FMI)

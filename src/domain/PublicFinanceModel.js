@@ -1,5 +1,5 @@
-import { UnionSpendingModel } from './UnionSpendingModel.js?v=20261119-1317';
-import { UnionBudgetModel } from './UnionBudgetModel.js?v=20261119-1317';
+import { UnionSpendingModel } from './UnionSpendingModel.js?v=20261119-1320';
+import { UnionBudgetModel } from './UnionBudgetModel.js?v=20261119-1320';
 
 /**
  * Camada de Domínio: Perfil das Finanças Públicas por Habitante e por Eleitor
